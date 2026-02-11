@@ -1,0 +1,51 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin-bottom: var(--spacing-lg);
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.main {
+  /* Container class handles max-width and padding */
+}
+
+.footer {
+  text-align: center;
+  margin-top: var(--spacing-xl);
+  color: var(--color-text-muted);
+}
+

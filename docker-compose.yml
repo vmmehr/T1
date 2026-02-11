@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: decision_app_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: decision_app
+      POSTGRES_PASSWORD: decision_app
+      POSTGRES_DB: decision_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/local/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+volumes:
+  postgres_data:

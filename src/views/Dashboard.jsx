@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDecision } from '../context/DecisionContext';
 import Home from './Home';
+import styles from './Dashboard.module.css';
 
 const Dashboard = () => {
     const { currentUser, getClientsForConsultant, getAllConsultants, assignClientToConsultant, getAllUsers } = useAuth();
@@ -35,7 +36,7 @@ const Dashboard = () => {
         };
 
         fetchData();
-    }, [currentUser]);
+    }, [currentUser, getAllConsultants, getAllUsers, getClientsForConsultant]);
 
     if (!currentUser) return null;
     if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>در حال بارگذاری...</div>;
@@ -46,15 +47,15 @@ const Dashboard = () => {
 
         return (
             <div>
-                <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                <div className={styles.welcomeBox}>
                     <h3>خوش آمدید، {currentUser.full_name || currentUser.username}</h3>
                     <p>نقش: مراجع</p>
                     {currentUser.consultant_id ? (
                         <p>مشاور شما: {myConsultant?.full_name || 'نامشخص'}</p>
                     ) : (
                         <div>
-                            <p style={{ color: 'orange', marginBottom: '0.5rem' }}>شما هنوز مشاوری ندارید.</p>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <p className={styles.warning}>شما هنوز مشاوری ندارید.</p>
+                            <div className={styles.selectContainer}>
                                 <select
                                     value={selectedClient || ''}
                                     onChange={(e) => setSelectedClient(e.target.value)}
@@ -92,7 +93,7 @@ const Dashboard = () => {
     // Consultant View
     if (currentUser.role === 'consultant') {
         return (
-            <div style={{ padding: '1rem' }}>
+            <div className={styles.container}>
                 <h2>داشبورد مشاور</h2>
                 <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
 
@@ -101,11 +102,11 @@ const Dashboard = () => {
                     {myClients.length === 0 ? (
                         <p>شما هنوز مراجعی ندارید.</p>
                     ) : (
-                        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                        <div className={styles.clientsGrid}>
                             {myClients.map(client => (
-                                <div key={client.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
-                                    <h4>{client.full_name || client.username}</h4>
-                                    <p>نام کاربری: {client.username}</p>
+                                <div key={client.id} className={styles.clientCard}>
+                                    <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
+                                    <p className={styles.clientUsername}>نام کاربری: {client.username}</p>
                                     <button
                                         className="btn btn-primary"
                                         onClick={() => {
@@ -129,17 +130,17 @@ const Dashboard = () => {
         const allConsultants = allUsers.filter(u => u.role === 'consultant');
 
         return (
-            <div style={{ padding: '1rem' }}>
+            <div className={styles.container}>
                 <h2>داشبورد {currentUser.role === 'supervisor' ? 'سوپروایزر' : 'روانشناس'}</h2>
                 <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
 
                 <div style={{ marginTop: '2rem' }}>
                     <h3>لیست تمام مراجعین</h3>
-                    <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
+                    <div className={styles.clientsGrid}>
                         {allClients.map(client => (
-                            <div key={client.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
-                                <h4>{client.full_name || client.username}</h4>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                            <div key={client.id} className={styles.clientCard}>
+                                <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
+                                <p className={styles.clientUsername}>
                                     مشاور: {allUsers.find(u => u.id === client.consultant_id)?.full_name || 'ندارد'}
                                 </p>
                                 <button
@@ -158,9 +159,9 @@ const Dashboard = () => {
 
                 <div style={{ marginTop: '2rem' }}>
                     <h3>لیست تمام مشاورین</h3>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
+                    <ul className={styles.consultantsList}>
                         {allConsultants.map(consultant => (
-                            <li key={consultant.id} style={{ padding: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                            <li key={consultant.id} className={styles.consultantItem}>
                                 <strong>{consultant.full_name || consultant.username}</strong>
                             </li>
                         ))}

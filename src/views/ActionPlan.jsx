@@ -1,10 +1,12 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { useDecision } from '../context/DecisionContext';
+import { useTask } from '../context/TaskContext';
 import OutcomeTracker from '../components/OutcomeTracker';
+import styles from './ActionPlan.module.css';
 
 const ActionPlan = () => {
-    const { currentDecision, goHome, setStep, getTasks, updateTask } = useDecision();
+    const { currentDecision, goHome, setStep } = useDecision();
+    const { getTasks, updateTask } = useTask();
 
     // Get all tasks associated with current decision
     const tasks = getTasks(currentDecision.id);
@@ -47,15 +49,15 @@ const ActionPlan = () => {
     }).format(new Date());
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div className={styles.container}>
             {/* Print Header - Only visible in print */}
             <div className="print-only" style={{ display: 'none', textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid black', paddingBottom: '1rem' }}>
                 <h1>برنامه عملیاتی: {currentDecision.title}</h1>
                 <p>تاریخ چاپ: {todayJalali}</p>
             </div>
 
-            <div className="glass-panel no-print" style={{ padding: 'var(--spacing-lg)' }}>
-                <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-lg)', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
+            <div className={`glass-panel no-print ${styles.panel}`}>
+                <div className={styles.header}>
                     <h2 style={{ color: 'var(--color-accent)' }}>برنامه عملیاتی: {currentDecision.title}</h2>
                     <p style={{ color: 'var(--color-text-muted)' }}>
                         لیست کارهایی که برای موفقیت این تصمیم باید انجام دهید.
@@ -63,24 +65,17 @@ const ActionPlan = () => {
                 </div>
 
                 {allActions.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div className={styles.emptyState}>
                         <p>هیچ راهکار عملیاتی ثبت نشده است.</p>
                         <button onClick={() => setStep(2)} className="btn btn-primary" style={{ marginTop: '1rem' }}>
                             بازگشت به مرحله قبل
                         </button>
                     </div>
                 ) : (
-                    <ul style={{ listStyle: 'none' }}>
+                    <ul className={styles.actionsList}>
                         {allActions.map(item => (
-                            <li key={item.id} style={{
-                                marginBottom: '1rem',
-                                padding: '1rem',
-                                background: item.is_completed ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
-                                borderRadius: 'var(--radius-sm)',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '1rem',
-                                transition: 'all 0.2s'
+                            <li key={item.id} className={styles.actionItem} style={{
+                                background: item.is_completed ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'
                             }}>
                                 <input
                                     type="checkbox"
@@ -88,11 +83,11 @@ const ActionPlan = () => {
                                     onChange={() => handleToggleComplete(item.id, item.is_completed)}
                                     style={{ marginTop: '0.3rem', width: '20px', height: '20px', cursor: 'pointer' }}
                                 />
-                                <div style={{ flex: 1, opacity: item.is_completed ? 0.5 : 1, textDecoration: item.is_completed ? 'line-through' : 'none' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.2rem' }}>
+                                <div className={styles.actionContent} style={{ opacity: item.is_completed ? 0.5 : 1, textDecoration: item.is_completed ? 'line-through' : 'none' }}>
+                                    <div className={styles.actionTitle}>
                                         {item.strategy}
                                     </div>
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                                    <div className={styles.actionSubtitle}>
                                         {item.type === 'pro' ? 'برای تقویت: ' : 'برای مدیریت: '} {item.text}
                                     </div>
                                 </div>
@@ -101,7 +96,7 @@ const ActionPlan = () => {
                     </ul>
                 )}
 
-                <div style={{ marginTop: 'var(--spacing-xl)', textAlign: 'center', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <div className={styles.footer}>
                     <button onClick={() => window.print()} className="btn btn-accent">
                         چاپ برنامه
                     </button>
@@ -110,7 +105,7 @@ const ActionPlan = () => {
                     </button>
                 </div>
 
-                <OutcomeTracker />
+                <OutcomeTracker key={currentDecision.id} />
             </div>
 
             {/* Print View - Simple Checklist */}

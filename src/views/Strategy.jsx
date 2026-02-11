@@ -1,13 +1,15 @@
 import React from 'react';
 import { useDecision } from '../context/DecisionContext';
+import { useTask } from '../context/TaskContext';
 import CommentSection from '../components/CommentSection';
+import styles from './Strategy.module.css';
 
 const StrategyItem = ({ item, type }) => {
     const isPro = type === 'pros';
     const color = isPro ? '#10b981' : '#ef4444';
     const question = isPro ? 'چگونه می‌توانیم این مورد را تقویت کنیم؟' : 'چگونه می‌توانیم این مورد را کاهش دهیم یا حذف کنیم؟';
 
-    const { getTasks, addTask, deleteTask, updateTask } = useDecision();
+    const { getTasks, addTask, deleteTask } = useTask();
     const [newTaskText, setNewTaskText] = React.useState('');
 
     // Get tasks for this specific item
@@ -102,24 +104,24 @@ const StrategyItem = ({ item, type }) => {
 };
 
 const Strategy = () => {
-    const { currentDecision, updateStrategy, setStep } = useDecision();
+    const { currentDecision, setStep } = useDecision();
 
     // Sort items by weight (descending) to focus on most important ones first
     const sortedPros = [...currentDecision.pros].sort((a, b) => b.weight - a.weight);
     const sortedCons = [...currentDecision.cons].sort((a, b) => b.weight - a.weight);
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-lg)' }}>
+        <div className={styles.container}>
+            <div className={styles.header}>
                 <h2>بهینه‌سازی تصمیم</h2>
                 <p style={{ color: 'var(--color-text-muted)' }}>
                     برای هر یک از موارد، راهکارهای اجرایی بنویسید. این‌ها تبدیل به برنامه عملیاتی شما خواهند شد.
                 </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)' }}>
+            <div className={styles.grid}>
                 <div>
-                    <h3 style={{ color: '#10b981', textAlign: 'center', marginBottom: '1rem' }}>تقویت مزایا</h3>
+                    <h3 className={styles.sectionTitle} style={{ color: '#10b981' }}>تقویت مزایا</h3>
                     {sortedPros.map(item => (
                         <StrategyItem
                             key={item.id}
@@ -127,11 +129,11 @@ const Strategy = () => {
                             type="pros"
                         />
                     ))}
-                    {sortedPros.length === 0 && <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>موردی ثبت نشده است.</p>}
+                    {sortedPros.length === 0 && <p className={styles.emptyState}>موردی ثبت نشده است.</p>}
                 </div>
 
                 <div>
-                    <h3 style={{ color: '#ef4444', textAlign: 'center', marginBottom: '1rem' }}>مدیریت معایب</h3>
+                    <h3 className={styles.sectionTitle} style={{ color: '#ef4444' }}>مدیریت معایب</h3>
                     {sortedCons.map(item => (
                         <StrategyItem
                             key={item.id}
@@ -139,16 +141,16 @@ const Strategy = () => {
                             type="cons"
                         />
                     ))}
-                    {sortedCons.length === 0 && <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>موردی ثبت نشده است.</p>}
+                    {sortedCons.length === 0 && <p className={styles.emptyState}>موردی ثبت نشده است.</p>}
                 </div>
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)' }}>
+            <div className={styles.footer}>
                 <button onClick={() => setStep(3)} className="btn btn-primary">
                     مشاهده برنامه عملیاتی
                     <span style={{ marginRight: '0.5rem' }}>←</span>
                 </button>
-                <div style={{ marginTop: 'var(--spacing-lg)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--spacing-md)' }}>
+                <div className={styles.sectionFooter}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--color-text-muted)' }}>یادداشت‌های استراتژی</h3>
                     <CommentSection decisionId={currentDecision.id} section="strategy" />
                 </div>

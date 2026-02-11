@@ -1,0 +1,6 @@
+/* Analysis view styles - most styles are in components or inline for dynamic colors */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+

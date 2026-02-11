@@ -1,0 +1,142 @@
+.commentSection {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.commentSectionCompact {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.commentSectionExpanded {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.5rem;
+  text-decoration: underline;
+}
+
+.expandButtonWithCount {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.commentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.comment {
+  padding: 0.75rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.commentPublic {
+  background: white;
+  border-right: 3px solid var(--color-primary);
+}
+
+.commentInternal {
+  background: #fffbeb;
+  border-right: 3px solid #f59e0b;
+}
+
+.commentHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.commentMeta {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.commentContent {
+  white-space: pre-wrap;
+}
+
+.commentBadge {
+  background: #f59e0b;
+  color: white;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+
+.emptyComments {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.form {
+  /* Form styles */
+}
+
+.textarea {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  background: white;
+}
+
+.formFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.visibilityOptions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.visibilityLabel {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.visibilityInfo {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+

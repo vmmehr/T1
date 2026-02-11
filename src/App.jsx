@@ -1,5 +1,7 @@
 import React from 'react';
 import { DecisionProvider, useDecision } from './context/DecisionContext';
+import { TaskProvider } from './context/TaskContext';
+import { CommentProvider } from './context/CommentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Home from './views/Home';
@@ -88,7 +90,11 @@ const App = () => {
   return (
     <AuthProvider>
       <DecisionProvider>
-        <AppContent />
+        <TaskProvider>
+          <CommentProvider>
+            <AppContent />
+          </CommentProvider>
+        </TaskProvider>
       </DecisionProvider>
     </AuthProvider>
   );

@@ -1,0 +1,114 @@
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backButton {
+  background: transparent;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.newForm {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.formTitle {
+  margin-bottom: 1rem;
+}
+
+.formField {
+  margin-bottom: 1rem;
+}
+
+.formLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  background: #e2e8f0;
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.emptyStateButton {
+  margin-top: 1rem;
+}
+
+.decisionsList {
+  display: grid;
+  gap: 1rem;
+}
+
+.decisionCard {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.decisionHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.decisionTitle {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.statusBadge {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+}
+
+.decisionDate {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.decisionActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.deleteButton {
+  background: #fee2e2;
+  color: #ef4444;
+}
+

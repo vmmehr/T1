@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDecision } from '../context/DecisionContext';
+import styles from './Home.module.css';
 
 const Home = () => {
     const { decisions, createDecision, selectDecision, deleteDecision, viewingUserId, setViewingUserId } = useDecision();
@@ -26,14 +27,13 @@ const Home = () => {
     };
 
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <div className={styles.headerLeft}>
                     {viewingUserId && (
                         <button
                             onClick={() => setViewingUserId(null)}
-                            className="btn"
-                            style={{ background: 'transparent', padding: 0, fontSize: '1.5rem', lineHeight: 1, color: 'var(--color-text)' }}
+                            className={`btn ${styles.backButton}`}
                             title="بازگشت به داشبورد"
                         >
                             ←
@@ -49,11 +49,11 @@ const Home = () => {
             </div>
 
             {showNewForm && (
-                <div className="glass-panel" style={{ padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-                    <h3 style={{ marginBottom: '1rem' }}>تعریف تصمیم جدید</h3>
+                <div className={`glass-panel ${styles.newForm}`}>
+                    <h3 className={styles.formTitle}>تعریف تصمیم جدید</h3>
                     <form onSubmit={handleCreate}>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>عنوان</label>
+                        <div className={styles.formField}>
+                            <label className={styles.formLabel}>عنوان</label>
                             <input
                                 type="text"
                                 className="input-field"
@@ -62,8 +62,8 @@ const Home = () => {
                                 required
                             />
                         </div>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>توضیحات</label>
+                        <div className={styles.formField}>
+                            <label className={styles.formLabel}>توضیحات</label>
                             <textarea
                                 className="input-field"
                                 value={description}
@@ -71,8 +71,8 @@ const Home = () => {
                                 rows={3}
                             />
                         </div>
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                            <button type="button" onClick={() => setShowNewForm(false)} className="btn" style={{ background: '#e2e8f0' }}>
+                        <div className={styles.formActions}>
+                            <button type="button" onClick={() => setShowNewForm(false)} className={`btn ${styles.cancelButton}`}>
                                 انصراف
                             </button>
                             <button type="submit" className="btn btn-primary">
@@ -84,43 +84,36 @@ const Home = () => {
             )}
 
             {decisions.length === 0 ? (
-                <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                <div className={`glass-panel ${styles.emptyState}`}>
                     <p>هنوز تصمیمی ثبت نکرده‌اید.</p>
-                    <button onClick={() => setShowNewForm(true)} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                    <button onClick={() => setShowNewForm(true)} className={`btn btn-primary ${styles.emptyStateButton}`}>
                         اولین تصمیم خود را بگیرید
                     </button>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gap: '1rem' }}>
+                <div className={styles.decisionsList}>
                     {decisions.map(decision => {
                         const status = getStatusLabel(decision.status);
                         return (
-                            <div key={decision.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div key={decision.id} className={`glass-panel ${styles.decisionCard}`}>
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{decision.title}</h3>
-                                        <span style={{
-                                            fontSize: '0.8rem',
-                                            padding: '0.2rem 0.6rem',
-                                            borderRadius: '1rem',
-                                            background: status.bg,
-                                            color: status.color
-                                        }}>
+                                    <div className={styles.decisionHeader}>
+                                        <h3 className={styles.decisionTitle}>{decision.title}</h3>
+                                        <span className={styles.statusBadge} style={{ background: status.bg, color: status.color }}>
                                             {status.text}
                                         </span>
                                     </div>
-                                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                                    <p className={styles.decisionDate}>
                                         {new Date(decision.created_at).toLocaleDateString('fa-IR')}
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button onClick={() => selectDecision(decision.id)} className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
+                                <div className={styles.decisionActions}>
+                                    <button onClick={() => selectDecision(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
                                         مشاهده / ادامه
                                     </button>
                                     <button
                                         onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
-                                        className="btn"
-                                        style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', background: '#fee2e2', color: '#ef4444' }}
+                                        className={`btn ${styles.actionButton} ${styles.deleteButton}`}
                                     >
                                         حذف
                                     </button>

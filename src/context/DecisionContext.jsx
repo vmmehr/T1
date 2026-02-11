@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
-import { supabase } from '../supabaseClient';
+import { api } from '../apiClient';
 
 const DecisionContext = createContext();
 
@@ -23,98 +23,69 @@ export const DecisionProvider = ({ children }) => {
   // Local state for items of the current decision to avoid constant refetching
   // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [] } }
   const [decisionItems, setDecisionItems] = useState({});
+  const activeUserId = viewingUserId || currentUser?.id;
+
+  const fetchDecisions = useCallback(async (userId) => {
+    if (!userId && !currentUser) return;
+    const targetUserId = userId || currentUser.id;
+
+    setLoading(true);
+    try {
+      const data = await api.decisions.list(targetUserId);
+      setDecisions(data || []);
+    } catch (error) {
+      console.error('Error fetching decisions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser]);
+
+  const fetchItems = useCallback(async (decisionId) => {
+    try {
+      const { items = [], tasks = [], comments = [] } = await api.decisions.details(decisionId);
+      const pros = items.filter(i => i.type === 'pro');
+      const cons = items.filter(i => i.type === 'con');
+
+      setDecisionItems(prev => ({
+        ...prev,
+        [decisionId]: { pros, cons, tasks, comments }
+      }));
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
       // If viewingUserId is set (consultant viewing client), fetch that user's decisions
       // Otherwise fetch current user's decisions
-      fetchDecisions(viewingUserId || currentUser.id);
+      fetchDecisions(activeUserId);
     } else {
       setDecisions([]);
       setCurrentDecisionId(null);
       setDecisionItems({});
       setViewingUserId(null);
     }
-  }, [currentUser, viewingUserId]);
+  }, [currentUser, activeUserId, fetchDecisions]);
 
   // Fetch items when current decision changes
   useEffect(() => {
     if (currentDecisionId) {
       fetchItems(currentDecisionId);
     }
-  }, [currentDecisionId]);
+  }, [currentDecisionId, fetchItems]);
 
-  const fetchDecisions = async (userId) => {
-    if (!userId && !currentUser) return;
-    const targetUserId = userId || currentUser.id;
+  const currentDecision = useMemo(() => {
+    const selectedDecision = decisions.find(d => d.id === currentDecisionId);
+    if (!selectedDecision) return null;
 
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('decisions')
-      .select('*')
-      .eq('user_id', targetUserId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching decisions:', error);
-    } else {
-      setDecisions(data || []);
-    }
-    setLoading(false);
-  };
-
-  const fetchItems = async (decisionId) => {
-    const { data, error } = await supabase
-      .from('decision_items')
-      .select('*')
-      .eq('decision_id', decisionId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching items:', error);
-      return;
-    }
-
-    const pros = data.filter(i => i.type === 'pro');
-    const cons = data.filter(i => i.type === 'con');
-
-    // Fetch tasks
-    const { data: tasksData, error: tasksError } = await supabase
-      .from('tasks')
-      .select('*')
-      .in('decision_item_id', data.map(i => i.id))
-      .order('created_at', { ascending: true });
-
-    let tasks = [];
-    if (!tasksError && tasksData) {
-      tasks = tasksData;
-    }
-
-    // Fetch comments
-    const { data: commentsData, error: commentsError } = await supabase
-      .from('comments')
-      .select('*, profiles(*)')
-      .eq('decision_id', decisionId)
-      .order('created_at', { ascending: true });
-
-    let comments = [];
-    if (!commentsError && commentsData) {
-      comments = commentsData;
-    }
-
-    setDecisionItems(prev => ({
-      ...prev,
-      [decisionId]: { pros, cons, tasks, comments }
-    }));
-  };
-
-  const currentDecision = decisions.find(d => d.id === currentDecisionId)
-    ? {
-      ...decisions.find(d => d.id === currentDecisionId),
+    return {
+      ...selectedDecision,
       pros: decisionItems[currentDecisionId]?.pros || [],
       cons: decisionItems[currentDecisionId]?.cons || []
-    }
-    : null;
+    };
+  }, [decisions, currentDecisionId, decisionItems]);
 
   const createDecision = async (title, description) => {
     if (!currentUser) return;
@@ -128,13 +99,10 @@ export const DecisionProvider = ({ children }) => {
       outcome_reason: ''
     };
 
-    const { data, error } = await supabase
-      .from('decisions')
-      .insert([newDecision])
-      .select()
-      .single();
-
-    if (error) {
+    let data;
+    try {
+      data = await api.decisions.create(newDecision);
+    } catch (error) {
       console.error('Error creating decision:', error);
       return;
     }
@@ -155,14 +123,11 @@ export const DecisionProvider = ({ children }) => {
     // Optimistic update for decision fields
     setDecisions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
 
-    const { error } = await supabase
-      .from('decisions')
-      .update(updates)
-      .eq('id', id);
-
-    if (error) {
+    try {
+      await api.decisions.update(id, updates);
+    } catch (error) {
       console.error('Error updating decision:', error);
-      fetchDecisions();
+      fetchDecisions(activeUserId);
     }
   };
 
@@ -172,14 +137,11 @@ export const DecisionProvider = ({ children }) => {
       setCurrentDecisionId(null);
     }
 
-    const { error } = await supabase
-      .from('decisions')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
+    try {
+      await api.decisions.delete(id);
+    } catch (error) {
       console.error('Error deleting decision:', error);
-      fetchDecisions();
+      fetchDecisions(activeUserId);
     }
   };
 
@@ -207,17 +169,8 @@ export const DecisionProvider = ({ children }) => {
       };
     });
 
-    const { data, error } = await supabase
-      .from('decision_items')
-      .insert([newItem])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding item:', error);
-      // Revert logic would go here
-      fetchItems(currentDecisionId);
-    } else {
+    try {
+      const data = await api.decisionItems.create(newItem);
       // Replace temp item with real one
       setDecisionItems(prev => {
         const current = prev[currentDecisionId];
@@ -230,6 +183,10 @@ export const DecisionProvider = ({ children }) => {
           }
         };
       });
+    } catch (error) {
+      console.error('Error adding item:', error);
+      // Revert logic would go here
+      fetchItems(currentDecisionId);
     }
   };
 
@@ -252,12 +209,9 @@ export const DecisionProvider = ({ children }) => {
       };
     });
 
-    const { error } = await supabase
-      .from('decision_items')
-      .update(updates)
-      .eq('id', itemId);
-
-    if (error) {
+    try {
+      await api.decisionItems.update(itemId, updates);
+    } catch (error) {
       console.error('Error updating item:', error);
       fetchItems(currentDecisionId);
     }
@@ -266,107 +220,8 @@ export const DecisionProvider = ({ children }) => {
   const updateItemWeight = (type, itemId, weight) => updateItem(type === 'pros' ? 'pro' : 'con', itemId, { weight });
   const updateStrategy = (type, itemId, strategy) => updateItem(type === 'pros' ? 'pro' : 'con', itemId, { strategy });
 
-  const addTask = async (decisionItemId, content) => {
-    if (!currentDecisionId) return;
-
-    const newTask = {
-      decision_item_id: decisionItemId,
-      content,
-      is_completed: false
-    };
-
-    // Optimistic
-    const tempId = Date.now();
-    setDecisionItems(prev => {
-      const current = prev[currentDecisionId] || { pros: [], cons: [], tasks: [], comments: [] };
-      return {
-        ...prev,
-        [currentDecisionId]: {
-          ...current,
-          tasks: [...(current.tasks || []), { ...newTask, id: tempId }]
-        }
-      };
-    });
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert([newTask])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding task:', error);
-      fetchItems(currentDecisionId);
-    } else {
-      setDecisionItems(prev => {
-        const current = prev[currentDecisionId];
-        return {
-          ...prev,
-          [currentDecisionId]: {
-            ...current,
-            tasks: (current.tasks || []).map(t => t.id === tempId ? data : t)
-          }
-        };
-      });
-    }
-  };
-
-  const updateTask = async (taskId, updates) => {
-    if (!currentDecisionId) return;
-
-    // Optimistic
-    setDecisionItems(prev => {
-      const current = prev[currentDecisionId];
-      return {
-        ...prev,
-        [currentDecisionId]: {
-          ...current,
-          tasks: (current.tasks || []).map(t => t.id === taskId ? { ...t, ...updates } : t)
-        }
-      };
-    });
-
-    const { error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error updating task:', error);
-      fetchItems(currentDecisionId);
-    }
-  };
-
-  const deleteTask = async (taskId) => {
-    if (!currentDecisionId) return;
-
-    // Optimistic
-    setDecisionItems(prev => {
-      const current = prev[currentDecisionId];
-      return {
-        ...prev,
-        [currentDecisionId]: {
-          ...current,
-          tasks: (current.tasks || []).filter(t => t.id !== taskId)
-        }
-      };
-    });
-
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error deleting task:', error);
-      fetchItems(currentDecisionId);
-    }
-  };
-
   const removeItem = async (type, itemId) => {
     if (!currentDecisionId) return;
-
-    const typeKey = type === 'pros' ? 'pro' : 'con';
 
     // Optimistic
     setDecisionItems(prev => {
@@ -381,89 +236,11 @@ export const DecisionProvider = ({ children }) => {
       };
     });
 
-    const { error } = await supabase
-      .from('decision_items')
-      .delete()
-      .eq('id', itemId);
-
-    if (error) {
+    try {
+      await api.decisionItems.delete(itemId);
+    } catch (error) {
       console.error('Error deleting item:', error);
       fetchItems(currentDecisionId);
-    }
-  };
-
-  const addComment = async (decisionId, content, targetItemId = null, visibility = 'public', section = 'general') => {
-    if (!currentUser) return;
-
-    const newComment = {
-      decision_id: decisionId,
-      user_id: currentUser.id,
-      content,
-      target_item_id: section === 'task' ? null : targetItemId,
-      task_id: section === 'task' ? targetItemId : null, // If commenting on a task, targetItemId is actually taskId
-      visibility,
-      section: section === 'task' ? 'strategy' : (targetItemId ? null : section) // Flatten logic suitable for current schema usage
-    };
-
-    // Correct payload adjustment:
-    // If we are commenting on a TASK, targetItemId passed here is treated as Task ID?
-    // The previous design used target_item_id for Decision Items (Pros/Cons).
-    // Now we have tasks.
-    // Let's clarify argument usage:
-    // If commenting on Pro/Con: targetItemId = item.id, section = null
-    // If commenting on Task: targetItemId = task.id, BUT we need to store it in task_id column?
-    // To keep API simple, let's look at the 'section' arg or infer.
-
-    const dbPayload = { ...newComment };
-    if (section === 'task') {
-      dbPayload.target_item_id = null;
-      dbPayload.task_id = targetItemId;
-      dbPayload.section = 'strategy'; // Tasks are part of strategy
-    } else {
-      dbPayload.task_id = null;
-    }
-
-    // Optimistic update
-    const tempId = Date.now();
-    const commentWithUser = {
-      ...newComment,
-      id: tempId,
-      created_at: new Date().toISOString(),
-      profiles: currentUser // Mock profile for immediate display
-    };
-
-    setDecisionItems(prev => {
-      const current = prev[decisionId] || { pros: [], cons: [], tasks: [], comments: [] };
-      return {
-        ...prev,
-        [decisionId]: {
-          ...current,
-          comments: [...(current.comments || []), commentWithUser]
-        }
-      };
-    });
-
-    const { data, error } = await supabase
-      .from('comments')
-      .insert([dbPayload])
-      .select('*, profiles(*)')
-      .single();
-
-    if (error) {
-      console.error('Error adding comment:', error);
-      // Revert logic
-      fetchItems(decisionId);
-    } else {
-      setDecisionItems(prev => {
-        const current = prev[decisionId];
-        return {
-          ...prev,
-          [decisionId]: {
-            ...current,
-            comments: (current.comments || []).map(c => c.id === tempId ? data : c)
-          }
-        };
-      });
     }
   };
 
@@ -509,13 +286,11 @@ export const DecisionProvider = ({ children }) => {
     loading,
     viewStep,
     setViewStep,
-    // Comments
-    addComment,
-    getComments: (decisionId) => decisionItems[decisionId]?.comments || [],
-    getTasks: (decisionId) => decisionItems[decisionId]?.tasks || [],
-    addTask,
-    updateTask,
-    deleteTask,
+    // Expose decisionItems and setDecisionItems for TaskContext and CommentContext
+    decisionItems,
+    setDecisionItems,
+    currentDecisionId,
+    fetchItems
   };
 
   return (

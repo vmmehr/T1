@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useDecision } from '../context/DecisionContext';
+import { useComment } from '../context/CommentContext';
+import styles from './CommentSection.module.css';
 
 const CommentSection = ({ decisionId, targetItemId = null, section = 'general', compact = false }) => {
     const { currentUser } = useAuth();
-    const { getComments, addComment } = useDecision();
+    const { getComments, addComment } = useComment();
     const [newComment, setNewComment] = useState('');
 
     // Default visibility: Internal for Psych/Sup, Public for Consultant (can change), Public for Client
     const defaultVisibility = ['psychologist', 'supervisor'].includes(currentUser?.role) ? 'internal' : 'public';
     const [visibility, setVisibility] = useState(defaultVisibility);
-
-    // Reset visibility when role changes or component remounts if needed
-    // React.useEffect(() => { setVisibility(defaultVisibility) }, [currentUser]);
     const [isExpanded, setIsExpanded] = useState(!compact);
 
     const allComments = getComments(decisionId);
 
-    // Filter comments based on targetItemId and Section
     // Filter comments based on targetItemId and Section
     const relevantComments = allComments.filter(c => {
         // If targetItemId is provided:
@@ -52,16 +49,7 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
         return (
             <button
                 onClick={() => setIsExpanded(true)}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    padding: 0,
-                    marginTop: '0.5rem',
-                    textDecoration: 'underline'
-                }}
+                className={styles.expandButton}
             >
                 افزودن یادداشت
             </button>
@@ -72,15 +60,7 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
         return (
             <button
                 onClick={() => setIsExpanded(true)}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-primary)',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    padding: 0,
-                    marginTop: '0.5rem'
-                }}
+                className={`${styles.expandButton} ${styles.expandButtonWithCount}`}
             >
                 💬 {visibleComments.length} یادداشت
             </button>
@@ -106,80 +86,58 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
         }
     };
 
-    const isStaff = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role);
     const isConsultant = currentUser?.role === 'consultant';
 
     return (
-        <div className="comment-section" style={{
-            marginTop: '1rem',
-            background: compact ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.4)',
-            padding: '1rem',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--color-border)'
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+        <div className={`comment-section ${styles.commentSection} ${compact ? styles.commentSectionCompact : styles.commentSectionExpanded}`}>
+            <div className={styles.header}>
+                <h4 className={styles.title}>
                     {targetItemId ? 'یادداشت‌ها' : 'یادداشت‌های کلی تصمیم'}
                 </h4>
                 {compact && (
                     <button
                         onClick={() => setIsExpanded(false)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}
+                        className={styles.closeButton}
                     >
                         −
                     </button>
                 )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div className={styles.commentsList}>
                 {visibleComments.map(comment => (
-                    <div key={comment.id} style={{
-                        background: comment.visibility === 'internal' ? '#fffbeb' : 'white',
-                        padding: '0.75rem',
-                        borderRadius: 'var(--radius-xs)',
-                        border: '1px solid var(--color-border)',
-                        borderRight: comment.visibility === 'internal' ? '3px solid #f59e0b' : '3px solid var(--color-primary)',
-                        fontSize: '0.9rem'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                    <div key={comment.id} className={`${styles.comment} ${comment.visibility === 'internal' ? styles.commentInternal : styles.commentPublic}`}>
+                        <div className={styles.commentHeader}>
                             <span>{comment.profiles?.full_name || 'نامشخص'}</span>
-                            <span style={{ display: 'flex', gap: '0.5rem' }}>
+                            <span className={styles.commentMeta}>
                                 <span>{new Date(comment.created_at).toLocaleDateString('fa-IR')}</span>
                                 {comment.visibility === 'internal' && (
-                                    <span style={{
-                                        background: '#f59e0b',
-                                        color: 'white',
-                                        padding: '0 4px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.7rem'
-                                    }}>محرمانه</span>
+                                    <span className={styles.commentBadge}>محرمانه</span>
                                 )}
                             </span>
                         </div>
-                        <div style={{ whiteSpace: 'pre-wrap' }}>{comment.content}</div>
+                        <div className={styles.commentContent}>{comment.content}</div>
                     </div>
                 ))}
                 {visibleComments.length === 0 && (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                    <div className={styles.emptyComments}>
                         هیچ یادداشتی وجود ندارد.
                     </div>
                 )}
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className={styles.form}>
                 <textarea
-                    className="input-field"
+                    className={`input-field ${styles.textarea}`}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="نوشتن یادداشت..."
                     rows={2}
-                    style={{ fontSize: '0.9rem', marginBottom: '0.5rem', background: 'white' }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
+                <div className={styles.formFooter}>
                     {isConsultant || ['psychologist', 'supervisor'].includes(currentUser?.role) ? (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+                        <div className={styles.visibilityOptions}>
+                            <label className={styles.visibilityLabel}>
                                 <input
                                     type="radio"
                                     name={`visibility-${targetItemId || 'main'}`}
@@ -189,7 +147,7 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
                                 />
                                 عمومی (مراجع می‌بیند)
                             </label>
-                            <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+                            <label className={styles.visibilityLabel}>
                                 <input
                                     type="radio"
                                     name={`visibility-${targetItemId || 'main'}`}
@@ -201,7 +159,7 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
                             </label>
                         </div>
                     ) : (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        <div className={styles.visibilityInfo}>
                             {currentUser?.role === 'client' ? 'قابل مشاهده برای مشاور' : 'محرمانه'}
                         </div>
                     )}

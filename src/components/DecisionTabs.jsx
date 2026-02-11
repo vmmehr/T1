@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './DecisionTabs.module.css';
 
 const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
     const tabs = [
@@ -8,18 +9,8 @@ const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
         { id: 3, label: 'برنامه عملیاتی' },
     ];
 
-    // Only show tabs up to the highest step reached (plus maybe one if we want next available?)
-    // Actually, for editing, we want to see all steps that have been reached.
-    // If currentDecision.step is 3 (ActionPlan), we should be able to go back to 0, 1, 2.
-    // But we shouldn't be able to jump to 3 if we are at 1.
-
     return (
-        <div className="no-print" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: 'var(--spacing-lg)',
-            borderBottom: '1px solid var(--color-border)'
-        }}>
+        <div className={`no-print ${styles.tabsContainer}`}>
             {tabs.map((tab) => {
                 const isDisabled = tab.id > currentStep;
                 const isActive = tab.id === activeStep;
@@ -29,17 +20,9 @@ const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
                         key={tab.id}
                         onClick={() => !isDisabled && onTabChange(tab.id)}
                         disabled={isDisabled}
+                        className={`${styles.tab} ${isActive ? styles.tabActive : ''} ${isDisabled ? styles.tabDisabled : ''}`}
                         style={{
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
-                            color: isActive ? 'var(--color-primary)' : isDisabled ? 'var(--color-text-muted)' : 'var(--color-text)',
-                            padding: '1rem',
-                            fontSize: '1rem',
-                            fontWeight: isActive ? 'bold' : 'normal',
-                            cursor: isDisabled ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.2s',
-                            opacity: isDisabled ? 0.5 : 1
+                            color: !isActive && !isDisabled ? 'var(--color-text)' : undefined
                         }}
                     >
                         {tab.label}

@@ -1,0 +1,59 @@
+/* ActionPlan view styles */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.panel {
+  padding: var(--spacing-lg);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 1rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+}
+
+.actionsList {
+  list-style: none;
+}
+
+.actionItem {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: all 0.2s;
+}
+
+.actionContent {
+  flex: 1;
+}
+
+.actionTitle {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-bottom: 0.2rem;
+}
+
+.actionSubtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.footer {
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+

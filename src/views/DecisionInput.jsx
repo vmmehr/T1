@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDecision } from '../context/DecisionContext';
 import CommentSection from '../components/CommentSection';
+import styles from './DecisionInput.module.css';
 
 const DecisionInput = () => {
     const { currentDecision, updateDecisionInfo } = useDecision();
@@ -15,43 +16,41 @@ const DecisionInput = () => {
     };
 
     return (
-        <div className="glass-panel" style={{ padding: 'var(--spacing-lg)', maxWidth: '800px', margin: '0 auto' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: 'var(--spacing-md)' }}>تعریف تصمیم</h2>
-            <p style={{ textAlign: 'center', marginBottom: 'var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
+        <div className={`glass-panel ${styles.container}`}>
+            <h2 className={styles.title}>تعریف تصمیم</h2>
+            <p className={styles.description}>
                 لطفاً تصمیمی که می‌خواهید بگیرید را به دقت شرح دهید.
             </p>
 
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                    <label style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontWeight: 'bold' }}>
+                <div className={styles.formField}>
+                    <label className={styles.label}>
                         عنوان تصمیم
                     </label>
                     <input
                         type="text"
-                        className="input-field"
+                        className={`input-field ${styles.input}`}
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="مثلاً: مهاجرت به شهر جدید"
                         required
-                        style={{ fontSize: '1.2rem' }}
                     />
                 </div>
 
-                <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-                    <label style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontWeight: 'bold' }}>
+                <div className={styles.formField}>
+                    <label className={styles.label}>
                         توضیحات تکمیلی (اختیاری)
                     </label>
                     <textarea
-                        className="input-field"
+                        className={`input-field ${styles.textarea}`}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="جزئیات بیشتر در مورد شرایط و محدودیت‌ها..."
                         rows={4}
-                        style={{ resize: 'vertical' }}
                     />
                 </div>
 
-                <div style={{ textAlign: 'center' }}>
+                <div className={styles.formActions}>
                     <button type="submit" className="btn btn-primary" style={{ minWidth: '200px' }}>
                         شروع تحلیل
                         <span style={{ marginRight: '0.5rem' }}>←</span>

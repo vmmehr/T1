@@ -1,35 +1,16 @@
 import React from 'react';
+import styles from './Layout.module.css';
 
 const Layout = ({ children }) => {
     return (
         <div className="app-layout">
-            <header className="glass-panel" style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-                marginBottom: 'var(--spacing-lg)',
-                borderRadius: 0,
-                borderLeft: 'none',
-                borderRight: 'none',
-                borderTop: 'none'
-            }}>
-                <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{
-                            width: '40px',
-                            height: '40px',
-                            background: 'var(--color-accent)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '1.2rem'
-                        }}>
+            <header className={`glass-panel ${styles.header}`}>
+                <div className={`container ${styles.headerContent}`}>
+                    <div className={styles.logoContainer}>
+                        <div className={styles.logo}>
                             ⚖️
                         </div>
-                        <h1 style={{ fontSize: '1.5rem', margin: 0 }}>سامانه تصمیم‌گیری هوشمند</h1>
+                        <h1 className={styles.title}>سامانه تصمیم‌گیری هوشمند</h1>
                     </div>
                     <nav>
                         {/* Navigation items could go here */}
@@ -37,11 +18,11 @@ const Layout = ({ children }) => {
                 </div>
             </header>
 
-            <main className="container">
+            <main className={`container ${styles.main}`}>
                 {children}
             </main>
 
-            <footer className="container" style={{ textAlign: 'center', marginTop: 'var(--spacing-xl)', color: 'var(--color-text-muted)' }}>
+            <footer className={`container ${styles.footer}`}>
                 <p>© {new Date().getFullYear()} سامانه مشاوره و تصمیم‌گیری</p>
             </footer>
         </div>

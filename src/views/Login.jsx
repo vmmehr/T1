@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import styles from './Login.module.css';
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -22,12 +23,12 @@ const Login = () => {
     };
 
     return (
-        <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '2rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>ورود به سیستم</h2>
-            {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+        <div className={styles.container}>
+            <h2 className={styles.title}>ورود به سیستم</h2>
+            {error && <div className={styles.error}>{error}</div>}
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>نام کاربری</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>نام کاربری</label>
                     <input
                         type="text"
                         value={username}
@@ -39,8 +40,8 @@ const Login = () => {
                         required
                     />
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>رمز عبور</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>رمز عبور</label>
                     <input
                         type="password"
                         value={password}
@@ -49,12 +50,12 @@ const Login = () => {
                         required
                     />
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+                <button type="submit" className={`btn btn-primary ${styles.submitButton}`} disabled={loading}>
                     {loading ? 'در حال ورود...' : 'ورود'}
                 </button>
             </form>
-            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <a href="/signup" style={{ color: 'var(--color-primary)' }}>ثبت نام نکرده‌اید؟</a>
+            <div className={styles.link}>
+                <a href="/signup">ثبت نام نکرده‌اید؟</a>
             </div>
         </div>
     );

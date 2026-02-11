@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import styles from './Signup.module.css';
 
 const Signup = () => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('client');
     const [consultantId, setConsultantId] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ const Signup = () => {
             }
         };
         fetchConsultants();
-    }, []);
+    }, [getAllConsultants]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -34,8 +34,7 @@ const Signup = () => {
                 fullName: name, // Changed from name to fullName to match DB schema
                 username,
                 password,
-                role,
-                consultantId: role === 'client' ? consultantId : null
+                consultantId
             });
             // Redirect or show success (AuthContext auto-logins, so App will redirect)
         } catch (err) {
@@ -46,12 +45,12 @@ const Signup = () => {
     };
 
     return (
-        <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '2rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'var(--color-surface)' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>ثبت نام</h2>
-            {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+        <div className={styles.container}>
+            <h2 className={styles.title}>ثبت نام</h2>
+            {error && <div className={styles.error}>{error}</div>}
             <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>نام و نام خانوادگی</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>نام و نام خانوادگی</label>
                     <input
                         type="text"
                         value={name}
@@ -60,8 +59,8 @@ const Signup = () => {
                         required
                     />
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>نام کاربری</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>نام کاربری</label>
                     <input
                         type="text"
                         value={username}
@@ -73,8 +72,8 @@ const Signup = () => {
                         required
                     />
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>رمز عبور</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>رمز عبور</label>
                     <input
                         type="password"
                         value={password}
@@ -83,42 +82,36 @@ const Signup = () => {
                         required
                     />
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>نقش</label>
+                <div className={styles.formField}>
+                    <label className={styles.label}>نقش</label>
+                    <input
+                        type="text"
+                        className="input-field"
+                        value="مراجع (Client)"
+                        disabled
+                    />
+                </div>
+
+                <div className={styles.formField}>
+                    <label className={styles.label}>انتخاب مشاور (اختیاری)</label>
                     <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
+                        value={consultantId}
+                        onChange={(e) => setConsultantId(e.target.value)}
                         className="input-field"
                     >
-                        <option value="client">مراجع (Client)</option>
-                        <option value="consultant">مشاور (Consultant)</option>
-                        <option value="psychologist">روانشناس (Psychologist)</option>
-                        <option value="supervisor">سوپروایزر (Supervisor)</option>
+                        <option value="">-- انتخاب کنید --</option>
+                        {consultants.map(c => (
+                            <option key={c.id} value={c.id}>{c.full_name || c.username}</option>
+                        ))}
                     </select>
                 </div>
 
-                {role === 'client' && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>انتخاب مشاور (اختیاری)</label>
-                        <select
-                            value={consultantId}
-                            onChange={(e) => setConsultantId(e.target.value)}
-                            className="input-field"
-                        >
-                            <option value="">-- انتخاب کنید --</option>
-                            {consultants.map(c => (
-                                <option key={c.id} value={c.id}>{c.full_name || c.username}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+                <button type="submit" className={`btn btn-primary ${styles.submitButton}`} disabled={loading}>
                     {loading ? 'در حال ثبت نام...' : 'ثبت نام'}
                 </button>
             </form>
-            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <a href="/login" style={{ color: 'var(--color-primary)' }}>قبلاً ثبت نام کرده‌اید؟</a>
+            <div className={styles.link}>
+                <a href="/login">قبلاً ثبت نام کرده‌اید؟</a>
             </div>
         </div>
     );

@@ -3,7 +3,7 @@ import { useDecision } from '../context/DecisionContext';
 
 const OutcomeTracker = () => {
     const { currentDecision, setOutcome } = useDecision();
-    const [reason, setReason] = useState(currentDecision.outcomeReason || '');
+    const [reason, setReason] = useState(currentDecision.outcome_reason || '');
 
     const handleOutcome = (status) => {
         if (status === 'fail' && !reason.trim()) {
@@ -19,9 +19,9 @@ const OutcomeTracker = () => {
                 <h3 style={{ color: currentDecision.status === 'success' ? '#10b981' : '#ef4444', textAlign: 'center' }}>
                     {currentDecision.status === 'success' ? '🎉 تصمیم موفق' : '⚠️ تصمیم ناموفق'}
                 </h3>
-                {currentDecision.outcomeReason && (
+                {currentDecision.outcome_reason && (
                     <p style={{ textAlign: 'center', marginTop: '1rem', fontStyle: 'italic' }}>
-                        "{currentDecision.outcomeReason}"
+                        "{currentDecision.outcome_reason}"
                     </p>
                 )}
                 <div style={{ textAlign: 'center', marginTop: '1rem' }}>
