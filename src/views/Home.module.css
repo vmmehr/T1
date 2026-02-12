@@ -101,7 +101,7 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .actionButton {
@@ -116,8 +116,13 @@
 }
 
 .outcomeButton {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.outcomeButton:hover {
+  background: #059669;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 900px) {

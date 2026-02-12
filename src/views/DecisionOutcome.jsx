@@ -17,8 +17,7 @@ const DecisionOutcome = () => {
       <div style={{ marginBottom: '1rem' }}>
         <button
           onClick={goHome}
-          className="btn"
-          style={{ background: 'transparent', color: 'var(--color-primary)', paddingLeft: 0 }}
+          className="btn back-to-list-btn"
         >
           ← بازگشت به لیست تصمیم‌ها
         </button>

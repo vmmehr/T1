@@ -126,9 +126,6 @@ const Home = () => {
                                     </p>
                                 </div>
                                 <div className={styles.decisionActions}>
-                                    <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
-                                        مشاهده / ادامه
-                                    </button>
                                     {canOpenOutcome && (
                                         <button
                                             onClick={() => openDecisionOutcome(decision.id)}
@@ -137,6 +134,9 @@ const Home = () => {
                                             {outcomeButtonText}
                                         </button>
                                     )}
+                                    <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
+                                        مشاهده / ادامه
+                                    </button>
                                     <button
                                         onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
                                         className={`btn ${styles.actionButton} ${styles.deleteButton}`}

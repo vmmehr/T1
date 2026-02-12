@@ -41,7 +41,7 @@ const CurrentView = () => {
     return (
       <div>
         <div style={{ marginBottom: '1rem' }}>
-          <button onClick={goHome} className="btn" style={{ background: 'transparent', color: 'var(--color-primary)', paddingLeft: 0 }}>
+          <button onClick={goHome} className="btn back-to-list-btn">
             ← بازگشت به لیست تصمیم‌ها
           </button>
         </div>

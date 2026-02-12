@@ -108,6 +108,20 @@ button {
   transform: translateY(-1px);
 }
 
+.back-to-list-btn {
+  background: #e0ebff;
+  color: var(--color-primary);
+  border: 1px solid #bfdbfe;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.85rem 1.3rem;
+}
+
+.back-to-list-btn:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}
+
 .input-field {
   width: 100%;
   padding: 0.75rem;
