@@ -1,7 +1,6 @@
 import React from 'react';
 import { useDecision } from '../context/DecisionContext';
 import { useTask } from '../context/TaskContext';
-import OutcomeTracker from '../components/OutcomeTracker';
 import styles from './ActionPlan.module.css';
 
 const ActionPlan = () => {
@@ -105,7 +104,6 @@ const ActionPlan = () => {
                     </button>
                 </div>
 
-                <OutcomeTracker key={currentDecision.id} />
             </div>
 
             {/* Print View - Simple Checklist */}

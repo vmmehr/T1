@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useDecision } from '../context/DecisionContext';
 import styles from './Home.module.css';
 
 const Home = () => {
-    const { decisions, createDecision, selectDecision, deleteDecision, viewingUserId, setViewingUserId } = useDecision();
+    const { currentUser } = useAuth();
+    const {
+        decisions,
+        createDecision,
+        openDecisionFlow,
+        openDecisionOutcome,
+        deleteDecision,
+        viewingUserId,
+        setViewingUserId
+    } = useDecision();
     const [showNewForm, setShowNewForm] = useState(false);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const isStaffViewingClient = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role) && viewingUserId;
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -94,6 +105,13 @@ const Home = () => {
                 <div className={styles.decisionsList}>
                     {decisions.map(decision => {
                         const status = getStatusLabel(decision.status);
+                        const canOpenOutcome = decision.step >= 3;
+                        const outcomeButtonText = isStaffViewingClient
+                            ? 'مشاهده نتیجه'
+                            : decision.status === 'pending'
+                                ? 'ثبت نتیجه'
+                                : 'مشاهده / ویرایش نتیجه';
+
                         return (
                             <div key={decision.id} className={`glass-panel ${styles.decisionCard}`}>
                                 <div>
@@ -108,9 +126,17 @@ const Home = () => {
                                     </p>
                                 </div>
                                 <div className={styles.decisionActions}>
-                                    <button onClick={() => selectDecision(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
+                                    <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
                                         مشاهده / ادامه
                                     </button>
+                                    {canOpenOutcome && (
+                                        <button
+                                            onClick={() => openDecisionOutcome(decision.id)}
+                                            className={`btn ${styles.actionButton} ${styles.outcomeButton}`}
+                                        >
+                                            {outcomeButtonText}
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
                                         className={`btn ${styles.actionButton} ${styles.deleteButton}`}

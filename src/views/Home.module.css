@@ -100,11 +100,14 @@
 .decisionActions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .actionButton {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .deleteButton {
@@ -112,3 +115,20 @@
   color: #ef4444;
 }
 
+.outcomeButton {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+@media (max-width: 900px) {
+  .decisionCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .decisionActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

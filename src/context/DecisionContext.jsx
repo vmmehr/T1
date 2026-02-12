@@ -19,6 +19,7 @@ export const DecisionProvider = ({ children }) => {
   const [viewingUserId, setViewingUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewStep, setViewStep] = useState(null); // New state for current view step
+  const [decisionViewMode, setDecisionViewMode] = useState('flow');
 
   // Local state for items of the current decision to avoid constant refetching
   // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [] } }
@@ -110,6 +111,7 @@ export const DecisionProvider = ({ children }) => {
     setDecisions(prev => [data, ...prev]);
     setCurrentDecisionId(data.id);
     setViewStep(1); // Start at step 1
+    setDecisionViewMode('flow');
     // Initialize empty items
     setDecisionItems(prev => ({ ...prev, [data.id]: { pros: [], cons: [], tasks: [], comments: [] } }));
   };
@@ -117,6 +119,19 @@ export const DecisionProvider = ({ children }) => {
   const selectDecision = (id) => {
     setCurrentDecisionId(id);
     setViewStep(null); // Reset to default (decision's current step) or calculate later
+    setDecisionViewMode('flow');
+  };
+
+  const openDecisionFlow = (id) => {
+    setCurrentDecisionId(id);
+    setViewStep(null);
+    setDecisionViewMode('flow');
+  };
+
+  const openDecisionOutcome = (id) => {
+    setCurrentDecisionId(id);
+    setViewStep(null);
+    setDecisionViewMode('outcome');
   };
 
   const updateDecision = async (id, updates) => {
@@ -125,9 +140,11 @@ export const DecisionProvider = ({ children }) => {
 
     try {
       await api.decisions.update(id, updates);
+      return true;
     } catch (error) {
       console.error('Error updating decision:', error);
       fetchDecisions(activeUserId);
+      return false;
     }
   };
 
@@ -251,13 +268,14 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const setOutcome = (status, reason) => {
-    if (!currentDecisionId) return;
-    updateDecision(currentDecisionId, { status, outcome_reason: reason });
+    if (!currentDecisionId) return false;
+    return updateDecision(currentDecisionId, { status, outcome_reason: reason });
   };
 
   const goHome = () => {
     setCurrentDecisionId(null);
     setViewStep(null);
+    setDecisionViewMode('flow');
     // Do NOT reset viewingUserId here, so consultant stays on client's list
   };
 
@@ -271,6 +289,8 @@ export const DecisionProvider = ({ children }) => {
     currentDecision,
     createDecision,
     selectDecision,
+    openDecisionFlow,
+    openDecisionOutcome,
     deleteDecision,
     addPro,
     addCon,
@@ -286,6 +306,7 @@ export const DecisionProvider = ({ children }) => {
     loading,
     viewStep,
     setViewStep,
+    decisionViewMode,
     // Expose decisionItems and setDecisionItems for TaskContext and CommentContext
     decisionItems,
     setDecisionItems,

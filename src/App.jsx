@@ -9,6 +9,7 @@ import DecisionInput from './views/DecisionInput';
 import Analysis from './views/Analysis';
 import Strategy from './views/Strategy';
 import ActionPlan from './views/ActionPlan';
+import DecisionOutcome from './views/DecisionOutcome';
 import Login from './views/Login';
 import Signup from './views/Signup';
 import Dashboard from './views/Dashboard';
@@ -16,7 +17,14 @@ import Dashboard from './views/Dashboard';
 import DecisionTabs from './components/DecisionTabs';
 
 const CurrentView = () => {
-  const { currentDecision, goHome, viewingUserId, viewStep, setViewStep } = useDecision();
+  const {
+    currentDecision,
+    goHome,
+    viewingUserId,
+    viewStep,
+    setViewStep,
+    decisionViewMode,
+  } = useDecision();
   const { currentUser } = useAuth();
 
   // Helper to check if user can view client data
@@ -26,6 +34,10 @@ const CurrentView = () => {
   const isClientView = currentUser?.role === 'client' || isStaffViewingClient;
 
   if (isClientView && currentDecision) {
+    if (decisionViewMode === 'outcome') {
+      return <DecisionOutcome />;
+    }
+
     return (
       <div>
         <div style={{ marginBottom: '1rem' }}>
