@@ -537,7 +537,7 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
     target_item_id = null,
     task_id = null,
     visibility = 'public',
-    section = 'general',
+    section: rawSection = 'general',
   } = req.body;
 
   const decisionMeta = await getDecisionMeta(decision_id);
@@ -558,6 +558,9 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
   if (!isStaff(req.user.role) && finalVisibility !== 'public') {
     return res.status(403).json({ error: 'Forbidden' });
   }
+  const normalizedSection = typeof rawSection === 'string' && rawSection.trim()
+    ? rawSection
+    : 'general';
 
   const { rows } = await pool.query(
     `insert into comments (decision_id, user_id, content, target_item_id, task_id, visibility, section)
@@ -570,7 +573,7 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
       target_item_id,
       task_id,
       finalVisibility,
-      section,
+      normalizedSection,
     ],
   );
 

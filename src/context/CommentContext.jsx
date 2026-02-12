@@ -25,24 +25,22 @@ export const CommentProvider = ({ children }) => {
   const addComment = async (decisionId, content, targetItemId = null, visibility = 'public', section = 'general') => {
     if (!currentUser) return;
 
+    const isTaskComment = section === 'task';
+    const normalizedSection = isTaskComment ? 'strategy' : (section || 'general');
+    const normalizedTargetItemId = isTaskComment ? null : targetItemId;
+    const normalizedTaskId = isTaskComment ? targetItemId : null;
+
     const newComment = {
       decision_id: decisionId,
       user_id: currentUser.id,
       content,
-      target_item_id: section === 'task' ? null : targetItemId,
-      task_id: section === 'task' ? targetItemId : null,
+      target_item_id: normalizedTargetItemId,
+      task_id: normalizedTaskId,
       visibility,
-      section: section === 'task' ? 'strategy' : (targetItemId ? null : section)
+      section: normalizedSection,
     };
 
     const dbPayload = { ...newComment };
-    if (section === 'task') {
-      dbPayload.target_item_id = null;
-      dbPayload.task_id = targetItemId;
-      dbPayload.section = 'strategy';
-    } else {
-      dbPayload.task_id = null;
-    }
 
     // Create temp comment with user profile for immediate display
     const tempComment = {
