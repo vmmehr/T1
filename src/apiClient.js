@@ -43,10 +43,17 @@ const request = async (path, { method = 'GET', body, auth = true } = {}) => {
   });
 
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
+  let payload = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { error: text };
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(payload?.error || 'Request failed');
+    throw new Error(payload?.error || `Request failed (${response.status})`);
   }
 
   return payload;

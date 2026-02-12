@@ -10,7 +10,15 @@ dotenv.config();
 const { Pool } = pg;
 const app = express();
 const port = Number(process.env.PORT || 4000);
-const jwtSecret = process.env.JWT_SECRET || 'local-dev-secret';
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
+if (['local-dev-secret', 'change-this-local-secret'].includes(jwtSecret)) {
+  throw new Error('JWT_SECRET must be a strong non-default value');
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -45,6 +53,19 @@ const parsePositiveInt = (value, fallback, { min = 0, max = Number.MAX_SAFE_INTE
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.max(min, Math.min(parsed, max));
+};
+
+const parsePositiveId = (value) => {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  }
+
+  if (typeof value === 'string' && /^[1-9]\d*$/.test(value)) {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+
+  return null;
 };
 
 const parseIsoDate = (value) => {
@@ -685,7 +706,10 @@ app.post('/api/decisions', authRequired, asyncHandler(async (req, res) => {
 }));
 
 app.patch('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {
-  const decisionId = Number(req.params.id);
+  const decisionId = parsePositiveId(req.params.id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision id' });
+  }
   const decisionMeta = await getDecisionMeta(decisionId);
 
   if (!decisionMeta) {
@@ -738,7 +762,10 @@ app.patch('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {
 }));
 
 app.delete('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {
-  const decisionId = Number(req.params.id);
+  const decisionId = parsePositiveId(req.params.id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision id' });
+  }
   const decisionMeta = await getDecisionMeta(decisionId);
 
   if (!decisionMeta) {
@@ -754,7 +781,10 @@ app.delete('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => 
 }));
 
 app.get('/api/decisions/:id/details', authRequired, asyncHandler(async (req, res) => {
-  const decisionId = Number(req.params.id);
+  const decisionId = parsePositiveId(req.params.id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision id' });
+  }
   const decisionMeta = await getDecisionMeta(decisionId);
 
   if (!decisionMeta) {
@@ -814,7 +844,12 @@ app.get('/api/decisions/:id/details', authRequired, asyncHandler(async (req, res
 
 app.post('/api/decision-items', authRequired, asyncHandler(async (req, res) => {
   const { decision_id, type, text, weight = 0, strategy = '' } = req.body;
-  const decisionMeta = await getDecisionMeta(decision_id);
+  const decisionId = parsePositiveId(decision_id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision_id' });
+  }
+
+  const decisionMeta = await getDecisionMeta(decisionId);
 
   if (!decisionMeta) {
     return res.status(404).json({ error: 'Decision not found' });
@@ -827,13 +862,16 @@ app.post('/api/decision-items', authRequired, asyncHandler(async (req, res) => {
     `insert into decision_items (decision_id, type, text, weight, strategy)
      values ($1, $2, $3, $4, $5)
      returning *`,
-    [decision_id, type, text, weight, strategy || ''],
+    [decisionId, type, text, weight, strategy || ''],
   );
   return res.status(201).json(rows[0]);
 }));
 
 app.patch('/api/decision-items/:id', authRequired, asyncHandler(async (req, res) => {
-  const itemId = Number(req.params.id);
+  const itemId = parsePositiveId(req.params.id);
+  if (!itemId) {
+    return res.status(400).json({ error: 'Invalid decision item id' });
+  }
   const itemMeta = await getDecisionItemMeta(itemId);
 
   if (!itemMeta) {
@@ -848,7 +886,10 @@ app.patch('/api/decision-items/:id', authRequired, asyncHandler(async (req, res)
 }));
 
 app.delete('/api/decision-items/:id', authRequired, asyncHandler(async (req, res) => {
-  const itemId = Number(req.params.id);
+  const itemId = parsePositiveId(req.params.id);
+  if (!itemId) {
+    return res.status(400).json({ error: 'Invalid decision item id' });
+  }
   const itemMeta = await getDecisionItemMeta(itemId);
 
   if (!itemMeta) {
@@ -864,7 +905,12 @@ app.delete('/api/decision-items/:id', authRequired, asyncHandler(async (req, res
 
 app.post('/api/tasks', authRequired, asyncHandler(async (req, res) => {
   const { decision_item_id, content, is_completed = false } = req.body;
-  const itemMeta = await getDecisionItemMeta(decision_item_id);
+  const decisionItemId = parsePositiveId(decision_item_id);
+  if (!decisionItemId) {
+    return res.status(400).json({ error: 'Invalid decision_item_id' });
+  }
+
+  const itemMeta = await getDecisionItemMeta(decisionItemId);
 
   if (!itemMeta) {
     return res.status(404).json({ error: 'Decision item not found' });
@@ -877,13 +923,16 @@ app.post('/api/tasks', authRequired, asyncHandler(async (req, res) => {
     `insert into tasks (decision_item_id, content, is_completed)
      values ($1, $2, $3)
      returning *`,
-    [decision_item_id, content, is_completed],
+    [decisionItemId, content, is_completed],
   );
   return res.status(201).json(rows[0]);
 }));
 
 app.patch('/api/tasks/:id', authRequired, asyncHandler(async (req, res) => {
-  const taskId = Number(req.params.id);
+  const taskId = parsePositiveId(req.params.id);
+  if (!taskId) {
+    return res.status(400).json({ error: 'Invalid task id' });
+  }
   const taskMeta = await getTaskMeta(taskId);
 
   if (!taskMeta) {
@@ -898,7 +947,10 @@ app.patch('/api/tasks/:id', authRequired, asyncHandler(async (req, res) => {
 }));
 
 app.delete('/api/tasks/:id', authRequired, asyncHandler(async (req, res) => {
-  const taskId = Number(req.params.id);
+  const taskId = parsePositiveId(req.params.id);
+  if (!taskId) {
+    return res.status(400).json({ error: 'Invalid task id' });
+  }
   const taskMeta = await getTaskMeta(taskId);
 
   if (!taskMeta) {
@@ -922,12 +974,61 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
     section: rawSection = 'general',
   } = req.body;
 
-  const decisionMeta = await getDecisionMeta(decision_id);
+  const decisionId = parsePositiveId(decision_id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision_id' });
+  }
+
+  if (typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'content is required' });
+  }
+
+  const normalizedTargetItemId = target_item_id === null ? null : parsePositiveId(target_item_id);
+  if (target_item_id !== null && !normalizedTargetItemId) {
+    return res.status(400).json({ error: 'Invalid target_item_id' });
+  }
+
+  const normalizedTaskId = task_id === null ? null : parsePositiveId(task_id);
+  if (task_id !== null && !normalizedTaskId) {
+    return res.status(400).json({ error: 'Invalid task_id' });
+  }
+
+  const decisionMeta = await getDecisionMeta(decisionId);
   if (!decisionMeta) {
     return res.status(404).json({ error: 'Decision not found' });
   }
   if (!canAccessDecision(req.user, decisionMeta)) {
     return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (normalizedTargetItemId !== null) {
+    const { rows: itemRows } = await pool.query(
+      `select id, decision_id
+       from decision_items
+       where id = $1`,
+      [normalizedTargetItemId],
+    );
+    const item = itemRows[0];
+    if (!item || item.decision_id !== decisionId) {
+      return res.status(400).json({ error: 'target_item_id must belong to the same decision' });
+    }
+  }
+
+  if (normalizedTaskId !== null) {
+    const { rows: taskRows } = await pool.query(
+      `select t.id, t.decision_item_id, di.decision_id
+       from tasks t
+       join decision_items di on di.id = t.decision_item_id
+       where t.id = $1`,
+      [normalizedTaskId],
+    );
+    const task = taskRows[0];
+    if (!task || task.decision_id !== decisionId) {
+      return res.status(400).json({ error: 'task_id must belong to the same decision' });
+    }
+    if (normalizedTargetItemId !== null && task.decision_item_id !== normalizedTargetItemId) {
+      return res.status(400).json({ error: 'task_id does not match target_item_id' });
+    }
   }
 
   let finalVisibility = visibility;
@@ -949,11 +1050,11 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
      values ($1, $2, $3, $4, $5, $6, $7)
      returning *`,
     [
-      decision_id,
+      decisionId,
       req.user.id,
-      content,
-      target_item_id,
-      task_id,
+      content.trim(),
+      normalizedTargetItemId,
+      normalizedTaskId,
       finalVisibility,
       normalizedSection,
     ],

@@ -53,8 +53,8 @@ curl http://localhost:4000/api/health
 Use `.env`:
 ```env
 VITE_API_URL=
-DATABASE_URL=postgresql://decision_app:decision_app@localhost:5432/decision_app
-JWT_SECRET=change-this-local-secret
+DATABASE_URL=postgresql://decision_app:decision_app@localhost:55434/decision_app
+JWT_SECRET=replace-with-a-long-random-secret
 PORT=4000
 ```
 
