@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import styles from './Signup.module.css';
 
@@ -6,24 +6,10 @@ const Signup = () => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [consultantId, setConsultantId] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [consultants, setConsultants] = useState([]);
 
-    const { signup, getAllConsultants } = useAuth();
-
-    useEffect(() => {
-        const fetchConsultants = async () => {
-            try {
-                const data = await getAllConsultants();
-                setConsultants(data || []);
-            } catch (err) {
-                console.error('Failed to load consultants', err);
-            }
-        };
-        fetchConsultants();
-    }, [getAllConsultants]);
+    const { signup } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,8 +19,7 @@ const Signup = () => {
             await signup({
                 fullName: name, // Changed from name to fullName to match DB schema
                 username,
-                password,
-                consultantId
+                password
             });
             // Redirect or show success (AuthContext auto-logins, so App will redirect)
         } catch (err) {
@@ -82,30 +67,6 @@ const Signup = () => {
                         required
                     />
                 </div>
-                <div className={styles.formField}>
-                    <label className={styles.label}>نقش</label>
-                    <input
-                        type="text"
-                        className="input-field"
-                        value="مراجع (Client)"
-                        disabled
-                    />
-                </div>
-
-                <div className={styles.formField}>
-                    <label className={styles.label}>انتخاب مشاور (اختیاری)</label>
-                    <select
-                        value={consultantId}
-                        onChange={(e) => setConsultantId(e.target.value)}
-                        className="input-field"
-                    >
-                        <option value="">-- انتخاب کنید --</option>
-                        {consultants.map(c => (
-                            <option key={c.id} value={c.id}>{c.full_name || c.username}</option>
-                        ))}
-                    </select>
-                </div>
-
                 <button type="submit" className={`btn btn-primary ${styles.submitButton}`} disabled={loading}>
                     {loading ? 'در حال ثبت نام...' : 'ثبت نام'}
                 </button>

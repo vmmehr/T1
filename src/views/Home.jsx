@@ -29,11 +29,16 @@ const Home = () => {
         }
     };
 
-    const getStatusLabel = (status) => {
-        switch (status) {
+    const getStatusLabel = (decision) => {
+        switch (decision.status) {
             case 'success': return { text: 'موفق', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
             case 'fail': return { text: 'ناموفق', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
-            default: return { text: 'در جریان', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+            case 'pending':
+                return decision.step >= 3
+                    ? { text: 'منتظر نتیجه', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }
+                    : { text: 'در جریان', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+            default:
+                return { text: 'در جریان', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
         }
     };
 
@@ -104,7 +109,7 @@ const Home = () => {
             ) : (
                 <div className={styles.decisionsList}>
                     {decisions.map(decision => {
-                        const status = getStatusLabel(decision.status);
+                        const status = getStatusLabel(decision);
                         const canOpenOutcome = decision.step >= 3;
                         const outcomeButtonText = isStaffViewingClient
                             ? 'مشاهده نتیجه'

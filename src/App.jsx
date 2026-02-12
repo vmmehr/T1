@@ -89,7 +89,15 @@ const AppContent = () => {
   return (
     <Layout>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-        <button onClick={logout} className="btn" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}>
+        <button
+          onClick={() => {
+            if (window.confirm('آیا از خروج از حساب اطمینان دارید؟')) {
+              logout();
+            }
+          }}
+          className="btn"
+          style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+        >
           خروج
         </button>
       </div>

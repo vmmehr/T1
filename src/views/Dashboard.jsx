@@ -5,9 +5,8 @@ import Home from './Home';
 import styles from './Dashboard.module.css';
 
 const Dashboard = () => {
-    const { currentUser, getClientsForConsultant, getAllConsultants, assignClientToConsultant, getAllUsers } = useAuth();
+    const { currentUser, getClientsForConsultant, getAllConsultants, getAllUsers } = useAuth();
     const { setViewingUserId } = useDecision();
-    const [selectedClient, setSelectedClient] = useState(null);
     const [consultants, setConsultants] = useState([]);
     const [myClients, setMyClients] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -53,36 +52,7 @@ const Dashboard = () => {
                     {currentUser.consultant_id ? (
                         <p>مشاور شما: {myConsultant?.full_name || 'نامشخص'}</p>
                     ) : (
-                        <div>
-                            <p className={styles.warning}>شما هنوز مشاوری ندارید.</p>
-                            <div className={styles.selectContainer}>
-                                <select
-                                    value={selectedClient || ''}
-                                    onChange={(e) => setSelectedClient(e.target.value)}
-                                    className="input-field"
-                                    style={{ maxWidth: '200px' }}
-                                >
-                                    <option value="">-- انتخاب مشاور --</option>
-                                    {consultants.map(c => (
-                                        <option key={c.id} value={c.id}>{c.full_name || c.username}</option>
-                                    ))}
-                                </select>
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={async () => {
-                                        if (selectedClient) {
-                                            await assignClientToConsultant(currentUser.id, selectedClient);
-                                            alert('مشاور با موفقیت انتخاب شد.');
-                                            // Refresh page or state ideally, but simple alert for now
-                                            window.location.reload();
-                                        }
-                                    }}
-                                    disabled={!selectedClient}
-                                >
-                                    ثبت مشاور
-                                </button>
-                            </div>
-                        </div>
+                        <p className={styles.warning}>شما هنوز مشاوری ندارید</p>
                     )}
                 </div>
                 <Home />
