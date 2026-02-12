@@ -1,0 +1,139 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.title {
+  margin: 0;
+}
+
+.trendGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.trendCard {
+  border: 1px solid rgba(191, 219, 254, 0.7);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.trendLabel {
+  margin-bottom: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.trendValue {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filterField label {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.tableWrap {
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.reasonCell {
+  max-width: 260px;
+  word-break: break-word;
+}
+
+.successBadge,
+.failBadge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.successBadge {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.failBadge {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1rem 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .trendGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .trendGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

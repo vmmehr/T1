@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useComment } from '../context/CommentContext';
 import styles from './CommentSection.module.css';
 
-const CommentSection = ({ decisionId, targetItemId = null, section = 'general', compact = false }) => {
+const CommentSection = ({
+    decisionId,
+    targetItemId = null,
+    section = 'general',
+    compact = false,
+    forcePublic = false
+}) => {
     const { currentUser } = useAuth();
     const { getComments, addComment } = useComment();
     const [newComment, setNewComment] = useState('');
 
     // Default visibility: Internal for Psych/Sup, Public for Consultant (can change), Public for Client
-    const defaultVisibility = ['psychologist', 'supervisor'].includes(currentUser?.role) ? 'internal' : 'public';
+    const defaultVisibility = forcePublic
+        ? 'public'
+        : (['psychologist', 'supervisor'].includes(currentUser?.role) ? 'internal' : 'public');
     const [visibility, setVisibility] = useState(defaultVisibility);
     const [isExpanded, setIsExpanded] = useState(!compact);
+
+    useEffect(() => {
+        setVisibility(defaultVisibility);
+    }, [defaultVisibility]);
 
     const allComments = getComments(decisionId);
 
@@ -77,7 +89,7 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
 
             // If Client: Force Public
             // If Others: Respect 'visibility' state (defaulted below)
-            let finalVisibility = visibility;
+            let finalVisibility = forcePublic ? 'public' : visibility;
             if (currentUser?.role === 'client') finalVisibility = 'public';
 
             // Pass 'section' logic
@@ -87,12 +99,17 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
     };
 
     const isConsultant = currentUser?.role === 'consultant';
+    const sectionTitle = targetItemId
+        ? 'یادداشت‌ها'
+        : section === 'outcome_reflection'
+            ? 'یادداشت‌های تحلیل شکست'
+            : 'یادداشت‌های کلی تصمیم';
 
     return (
         <div className={`comment-section ${styles.commentSection} ${compact ? styles.commentSectionCompact : styles.commentSectionExpanded}`}>
             <div className={styles.header}>
                 <h4 className={styles.title}>
-                    {targetItemId ? 'یادداشت‌ها' : 'یادداشت‌های کلی تصمیم'}
+                    {sectionTitle}
                 </h4>
                 {compact && (
                     <button
@@ -135,7 +152,11 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
                     rows={2}
                 />
                 <div className={styles.formFooter}>
-                    {isConsultant || ['psychologist', 'supervisor'].includes(currentUser?.role) ? (
+                    {forcePublic && (isConsultant || ['psychologist', 'supervisor'].includes(currentUser?.role)) ? (
+                        <div className={styles.visibilityInfo}>
+                            دیدگاه در این بخش عمومی است و مراجع آن را می‌بیند.
+                        </div>
+                    ) : !forcePublic && (isConsultant || ['psychologist', 'supervisor'].includes(currentUser?.role)) ? (
                         <div className={styles.visibilityOptions}>
                             <label className={styles.visibilityLabel}>
                                 <input
@@ -158,11 +179,11 @@ const CommentSection = ({ decisionId, targetItemId = null, section = 'general', 
                                 محرمانه
                             </label>
                         </div>
-                    ) : (
+                    ) : !forcePublic ? (
                         <div className={styles.visibilityInfo}>
                             {currentUser?.role === 'client' ? 'قابل مشاهده برای مشاور' : 'محرمانه'}
                         </div>
-                    )}
+                    ) : null}
 
                     <button type="submit" className="btn btn-sm btn-primary" disabled={!newComment.trim()}>
                         ارسال

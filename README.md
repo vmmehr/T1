@@ -26,6 +26,28 @@ npm run dev:full
 - Frontend: `http://localhost:5173`
 - API health: `http://localhost:4000/api/health`
 
+## Docker Runtime (DB + API + Migration)
+
+To run an up-to-date backend stack fully in Docker:
+```bash
+docker compose up -d --build db db-migrate api
+```
+
+What this does:
+- `db`: starts PostgreSQL
+- `db-migrate`: applies `db/migrations/add_decision_archive_metrics.sql`
+- `api`: runs `server/index.js` against Docker DB
+
+Check status:
+```bash
+docker compose ps
+```
+
+Check API health:
+```bash
+curl http://localhost:4000/api/health
+```
+
 ## Environment
 
 Use `.env`:
@@ -47,6 +69,16 @@ Important:
 ```bash
 docker compose down -v
 docker compose up -d db
+```
+
+### Applying New Decision Archive Migration (Existing DB)
+
+If your database is already running with older schema, apply:
+`db/migrations/add_decision_archive_metrics.sql`
+
+Example:
+```bash
+docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_decision_archive_metrics.sql
 ```
 
 ## Optional Dev Staff Accounts

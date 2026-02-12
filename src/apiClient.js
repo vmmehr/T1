@@ -2,6 +2,15 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'decision_app_token';
 
 const buildUrl = (path) => `${API_BASE}${path}`;
+const buildQueryString = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    query.set(key, String(value));
+  });
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : '';
+};
 
 export const tokenStorage = {
   get() {
@@ -58,11 +67,13 @@ export const api = {
     getAllUsers: () => request('/api/profiles/users'),
   },
   decisions: {
-    list: (userId) => request(`/api/decisions${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+    list: (userId) => request(`/api/decisions${buildQueryString({ userId })}`),
     create: (data) => request('/api/decisions', { method: 'POST', body: data }),
     update: (id, updates) => request(`/api/decisions/${id}`, { method: 'PATCH', body: updates }),
     delete: (id) => request(`/api/decisions/${id}`, { method: 'DELETE' }),
     details: (id) => request(`/api/decisions/${id}/details`),
+    archive: (params = {}) => request(`/api/decisions/archive${buildQueryString(params)}`),
+    stats: (params = {}) => request(`/api/decisions/stats${buildQueryString(params)}`),
   },
   decisionItems: {
     create: (data) => request('/api/decision-items', { method: 'POST', body: data }),

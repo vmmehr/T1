@@ -20,6 +20,8 @@ export const DecisionProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [viewStep, setViewStep] = useState(null); // New state for current view step
   const [decisionViewMode, setDecisionViewMode] = useState('flow');
+  const [decisionStats, setDecisionStats] = useState(null);
+  const [decisionStatsLoading, setDecisionStatsLoading] = useState(false);
 
   // Local state for items of the current decision to avoid constant refetching
   // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [] } }
@@ -40,6 +42,60 @@ export const DecisionProvider = ({ children }) => {
       setLoading(false);
     }
   }, [currentUser]);
+
+  const fetchDecisionStats = useCallback(async (windowValue = 'all', userId) => {
+    if (!currentUser) return null;
+    const targetUserId = userId || activeUserId || currentUser.id;
+    try {
+      return await api.decisions.stats({ userId: targetUserId, window: windowValue });
+    } catch (error) {
+      console.error('Error fetching decision stats:', error);
+      return null;
+    }
+  }, [activeUserId, currentUser]);
+
+  const refreshDecisionStats = useCallback(async () => {
+    if (!currentUser) {
+      setDecisionStats(null);
+      return null;
+    }
+
+    setDecisionStatsLoading(true);
+    try {
+      const data = await fetchDecisionStats('all');
+      setDecisionStats(data);
+      return data;
+    } finally {
+      setDecisionStatsLoading(false);
+    }
+  }, [currentUser, fetchDecisionStats]);
+
+  const fetchDecisionArchive = useCallback(async ({
+    from,
+    to,
+    status,
+    limit = 20,
+    offset = 0,
+  } = {}) => {
+    if (!currentUser) {
+      return { items: [], total: 0, limit, offset };
+    }
+
+    const targetUserId = activeUserId || currentUser.id;
+    try {
+      return await api.decisions.archive({
+        userId: targetUserId,
+        from,
+        to,
+        status,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error('Error fetching decision archive:', error);
+      return { items: [], total: 0, limit, offset };
+    }
+  }, [activeUserId, currentUser]);
 
   const fetchItems = useCallback(async (decisionId) => {
     try {
@@ -67,8 +123,17 @@ export const DecisionProvider = ({ children }) => {
       setCurrentDecisionId(null);
       setDecisionItems({});
       setViewingUserId(null);
+      setDecisionStats(null);
+      setDecisionViewMode('flow');
+      setViewStep(null);
     }
   }, [currentUser, activeUserId, fetchDecisions]);
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshDecisionStats();
+    }
+  }, [currentUser, activeUserId, refreshDecisionStats]);
 
   // Fetch items when current decision changes
   useEffect(() => {
@@ -114,6 +179,7 @@ export const DecisionProvider = ({ children }) => {
     setDecisionViewMode('flow');
     // Initialize empty items
     setDecisionItems(prev => ({ ...prev, [data.id]: { pros: [], cons: [], tasks: [], comments: [] } }));
+    refreshDecisionStats();
   };
 
   const selectDecision = (id) => {
@@ -134,17 +200,32 @@ export const DecisionProvider = ({ children }) => {
     setDecisionViewMode('outcome');
   };
 
+  const openArchive = () => {
+    setCurrentDecisionId(null);
+    setViewStep(null);
+    setDecisionViewMode('archive');
+  };
+
   const updateDecision = async (id, updates) => {
     // Optimistic update for decision fields
     setDecisions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
 
     try {
-      await api.decisions.update(id, updates);
-      return true;
+      const updatedDecision = await api.decisions.update(id, updates);
+      const { _outcome_event: outcomeEvent, ...decisionPayload } = updatedDecision || {};
+      setDecisions(prev => prev.map(d => d.id === id ? { ...d, ...decisionPayload } : d));
+      refreshDecisionStats();
+      return {
+        ok: true,
+        outcomeEvent: outcomeEvent || null
+      };
     } catch (error) {
       console.error('Error updating decision:', error);
       fetchDecisions(activeUserId);
-      return false;
+      return {
+        ok: false,
+        outcomeEvent: null
+      };
     }
   };
 
@@ -156,6 +237,7 @@ export const DecisionProvider = ({ children }) => {
 
     try {
       await api.decisions.delete(id);
+      refreshDecisionStats();
     } catch (error) {
       console.error('Error deleting decision:', error);
       fetchDecisions(activeUserId);
@@ -268,7 +350,9 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const setOutcome = (status, reason) => {
-    if (!currentDecisionId) return false;
+    if (!currentDecisionId) {
+      return Promise.resolve({ ok: false, outcomeEvent: null });
+    }
     return updateDecision(currentDecisionId, { status, outcome_reason: reason });
   };
 
@@ -291,6 +375,7 @@ export const DecisionProvider = ({ children }) => {
     selectDecision,
     openDecisionFlow,
     openDecisionOutcome,
+    openArchive,
     deleteDecision,
     addPro,
     addCon,
@@ -304,6 +389,8 @@ export const DecisionProvider = ({ children }) => {
     viewingUserId,
     setViewingUserId,
     loading,
+    decisionStats,
+    decisionStatsLoading,
     viewStep,
     setViewStep,
     decisionViewMode,
@@ -311,7 +398,10 @@ export const DecisionProvider = ({ children }) => {
     decisionItems,
     setDecisionItems,
     currentDecisionId,
-    fetchItems
+    fetchItems,
+    refreshDecisionStats,
+    fetchDecisionStats,
+    fetchDecisionArchive
   };
 
   return (

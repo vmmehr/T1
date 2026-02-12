@@ -10,7 +10,10 @@ const Home = () => {
         createDecision,
         openDecisionFlow,
         openDecisionOutcome,
+        openArchive,
         deleteDecision,
+        decisionStats,
+        decisionStatsLoading,
         viewingUserId,
         setViewingUserId
     } = useDecision();
@@ -18,6 +21,8 @@ const Home = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const isStaffViewingClient = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role) && viewingUserId;
+    const formatPercent = (value) => (value === null || value === undefined ? '—' : `${(value * 100).toFixed(1)}%`);
+    const activeDecisions = decisions.filter((decision) => decision.status === 'pending');
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -57,12 +62,49 @@ const Home = () => {
                     )}
                     <h2>{viewingUserId ? 'پرونده مراجع' : 'تصمیم‌های من'}</h2>
                 </div>
-                {!viewingUserId && (
-                    <button onClick={() => setShowNewForm(true)} className="btn btn-primary">
-                        + تصمیم جدید
+                <div className={styles.headerActions}>
+                    <button onClick={openArchive} className={`btn ${styles.archiveButton}`}>
+                        آرشیو و آمار
                     </button>
-                )}
+                    {!viewingUserId && (
+                        <button onClick={() => setShowNewForm(true)} className="btn btn-primary">
+                            + تصمیم جدید
+                        </button>
+                    )}
+                </div>
             </div>
+
+            <div className={`glass-panel ${styles.statsStrip}`}>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>نرخ موفقیت</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.success_rate)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>نرخ تکمیل</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.completion_rate)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>تصمیم‌های نهایی‌شده</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : (decisionStats?.finalized_count ?? 0)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>تصمیم‌های باز</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : (decisionStats?.pending_count ?? 0)}
+                    </p>
+                </div>
+            </div>
+            {!decisionStatsLoading && decisionStats?.low_sample_size && (
+                <p className={styles.lowSampleWarning}>
+                    حجم نمونه پایین است (کمتر از 20 تصمیم نهایی). این درصدها با احتیاط تفسیر شوند.
+                </p>
+            )}
 
             {showNewForm && (
                 <div className={`glass-panel ${styles.newForm}`}>
@@ -99,16 +141,16 @@ const Home = () => {
                 </div>
             )}
 
-            {decisions.length === 0 ? (
+            {activeDecisions.length === 0 ? (
                 <div className={`glass-panel ${styles.emptyState}`}>
-                    <p>هنوز تصمیمی ثبت نکرده‌اید.</p>
+                    <p>فعلاً تصمیم فعالی ندارید.</p>
                     <button onClick={() => setShowNewForm(true)} className={`btn btn-primary ${styles.emptyStateButton}`}>
-                        اولین تصمیم خود را بگیرید
+                        تصمیم جدید ثبت کنید
                     </button>
                 </div>
             ) : (
                 <div className={styles.decisionsList}>
-                    {decisions.map(decision => {
+                    {activeDecisions.map(decision => {
                         const status = getStatusLabel(decision);
                         const canOpenOutcome = decision.step >= 3;
                         const outcomeButtonText = isStaffViewingClient

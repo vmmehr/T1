@@ -12,6 +12,46 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/local/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U decision_app -d decision_app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  db-migrate:
+    image: postgres:16-alpine
+    container_name: decision_app_db_migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: decision_app
+    command:
+      - sh
+      - -c
+      - |
+        psql postgresql://decision_app:decision_app@db:5432/decision_app -v ON_ERROR_STOP=1 -f /migrations/add_decision_archive_metrics.sql
+    volumes:
+      - ./db/migrations/add_decision_archive_metrics.sql:/migrations/add_decision_archive_metrics.sql:ro
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: decision_app_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://decision_app:decision_app@db:5432/decision_app
+      JWT_SECRET: ${JWT_SECRET:-change-this-local-secret}
+      PORT: 4000
+    ports:
+      - "4000:4000"
 
 volumes:
   postgres_data:

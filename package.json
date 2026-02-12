@@ -8,6 +8,9 @@
     "server": "node server/index.js",
     "seed:dev": "node server/seed-dev-users.js",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "docker:up": "docker compose up -d --build db db-migrate api",
+    "docker:down": "docker compose down",
+    "docker:logs:api": "docker compose logs -f api",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -8,6 +8,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-lg);
+  gap: 1rem;
 }
 
 .headerLeft {
@@ -22,6 +23,60 @@
   font-size: 1.5rem;
   line-height: 1;
   color: var(--color-text);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.archiveButton {
+  background: #e0ebff;
+  color: var(--color-primary);
+  border: 1px solid #bfdbfe;
+}
+
+.archiveButton:hover {
+  background: #bfdbfe;
+}
+
+.statsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.kpiItem {
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(191, 219, 254, 0.6);
+}
+
+.kpiLabel {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.kpiValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.lowSampleWarning {
+  margin-bottom: 1rem;
+  color: #92400e;
+  font-size: 0.9rem;
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
 }
 
 .newForm {
@@ -126,6 +181,10 @@
 }
 
 @media (max-width: 900px) {
+  .statsStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .decisionCard {
     flex-direction: column;
     align-items: flex-start;
@@ -135,5 +194,11 @@
   .decisionActions {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .statsStrip {
+    grid-template-columns: 1fr;
   }
 }

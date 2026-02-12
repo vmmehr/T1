@@ -24,6 +24,8 @@ const asyncHandler = (handler) => (req, res, next) =>
 
 const isPrivileged = (role) => role === 'psychologist' || role === 'supervisor';
 const isStaff = (role) => role === 'consultant' || isPrivileged(role);
+const VALID_DECISION_STATUS = new Set(['pending', 'success', 'fail']);
+const FINAL_DECISION_STATUSES = new Set(['success', 'fail']);
 
 const publicUser = (user) => ({
   id: user.id,
@@ -35,6 +37,46 @@ const publicUser = (user) => ({
 
 const signToken = (user) =>
   jwt.sign({ sub: user.id, role: user.role }, jwtSecret, { expiresIn: '7d' });
+
+const isFinalDecisionStatus = (status) => FINAL_DECISION_STATUSES.has(status);
+
+const parsePositiveInt = (value, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) => {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.max(min, Math.min(parsed, max));
+};
+
+const parseIsoDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const getWindowStartDate = (windowValue) => {
+  if (!windowValue || windowValue === 'all') return null;
+  if (windowValue === '30d' || windowValue === '90d') {
+    const days = windowValue === '30d' ? 30 : 90;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    return startDate.toISOString();
+  }
+  return null;
+};
+
+const calculateWilsonInterval = (successCount, totalCount, z = 1.96) => {
+  if (totalCount <= 0) return null;
+  const p = successCount / totalCount;
+  const z2 = z * z;
+  const denominator = 1 + z2 / totalCount;
+  const center = (p + z2 / (2 * totalCount)) / denominator;
+  const margin = (z / denominator)
+    * Math.sqrt((p * (1 - p) + z2 / (4 * totalCount)) / totalCount);
+  return {
+    low: Math.max(0, center - margin),
+    high: Math.min(1, center + margin),
+  };
+};
 
 const getUserById = async (userId) => {
   const { rows } = await pool.query(
@@ -95,6 +137,152 @@ const consultantOwnsClient = async (consultantId, clientId) => {
     [clientId, consultantId],
   );
   return rows.length > 0;
+};
+
+const canAccessTargetUserScope = async (actor, targetUserId) => {
+  if (targetUserId === actor.id) return true;
+  if (isPrivileged(actor.role)) return true;
+  if (actor.role === 'consultant') {
+    return consultantOwnsClient(actor.id, targetUserId);
+  }
+  return false;
+};
+
+const getDecisionByIdForUpdate = async (client, decisionId) => {
+  const { rows } = await client.query(
+    `select *
+     from decisions
+     where id = $1
+     for update`,
+    [decisionId],
+  );
+  return rows[0] || null;
+};
+
+const updateDecisionWithOutcomeEvent = async ({
+  decisionId,
+  actorUserId,
+  updates,
+  reflectionPayload = null,
+}) => {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+
+    const existingDecision = await getDecisionByIdForUpdate(client, decisionId);
+    if (!existingDecision) {
+      const notFoundError = new Error('Decision not found');
+      notFoundError.status = 404;
+      throw notFoundError;
+    }
+
+    const nextStatus = updates.status !== undefined ? updates.status : existingDecision.status;
+    if (!VALID_DECISION_STATUS.has(nextStatus)) {
+      const invalidStatusError = new Error('Invalid status value');
+      invalidStatusError.status = 400;
+      throw invalidStatusError;
+    }
+
+    const currentIsFinal = isFinalDecisionStatus(existingDecision.status);
+    const nextIsFinal = isFinalDecisionStatus(nextStatus);
+    const reasonChangedForFinalized = (
+      currentIsFinal
+      && updates.outcome_reason !== undefined
+      && updates.outcome_reason !== existingDecision.outcome_reason
+    );
+
+    let eventType = null;
+    if (!currentIsFinal && nextIsFinal) {
+      eventType = 'finalized';
+    } else if (currentIsFinal && !nextIsFinal) {
+      eventType = 'reopened';
+    } else if (currentIsFinal && nextIsFinal && (
+      existingDecision.status !== nextStatus || reasonChangedForFinalized
+    )) {
+      eventType = 'revised';
+    }
+
+    const entries = Object.entries(updates).filter(([
+      key,
+      value,
+    ]) => ['title', 'description', 'step', 'status', 'outcome_reason'].includes(key) && value !== undefined);
+
+    if (eventType === 'reopened') {
+      entries.push(['finalized_at', null]);
+    } else if (eventType && nextIsFinal) {
+      entries.push(['finalized_at', new Date().toISOString()]);
+    }
+
+    let updatedDecision = existingDecision;
+    if (entries.length > 0) {
+      const setClause = entries.map(([key], index) => `${key} = $${index + 1}`).join(', ');
+      const values = entries.map(([, value]) => value);
+      values.push(decisionId);
+
+      const { rows } = await client.query(
+        `update decisions
+         set ${setClause}
+         where id = $${values.length}
+         returning *`,
+        values,
+      );
+      updatedDecision = rows[0];
+    }
+
+    let outcomeEvent = null;
+    if (eventType) {
+      const revisionOfEventId = eventType === 'revised' ? existingDecision.latest_outcome_event_id : null;
+      const normalizedPayload = reflectionPayload && typeof reflectionPayload === 'object'
+        ? reflectionPayload
+        : null;
+      const eventReason = updates.outcome_reason !== undefined
+        ? updates.outcome_reason
+        : updatedDecision.outcome_reason;
+
+      const { rows } = await client.query(
+        `insert into decision_outcome_events (
+          decision_id,
+          actor_user_id,
+          event_type,
+          from_status,
+          to_status,
+          outcome_reason,
+          reflection_payload,
+          revision_of_event_id
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8)
+        returning *`,
+        [
+          decisionId,
+          actorUserId,
+          eventType,
+          existingDecision.status,
+          nextStatus,
+          eventReason || '',
+          normalizedPayload ? JSON.stringify(normalizedPayload) : null,
+          revisionOfEventId,
+        ],
+      );
+      outcomeEvent = rows[0];
+
+      const latestUpdate = await client.query(
+        `update decisions
+         set latest_outcome_event_id = $1
+         where id = $2
+         returning *`,
+        [outcomeEvent.id, decisionId],
+      );
+      updatedDecision = latestUpdate.rows[0];
+    }
+
+    await client.query('commit');
+    return { decision: updatedDecision, outcomeEvent };
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const getDecisionItemMeta = async (itemId) => {
@@ -296,17 +484,9 @@ app.get('/api/profiles/users', authRequired, asyncHandler(async (req, res) => {
 app.get('/api/decisions', authRequired, asyncHandler(async (req, res) => {
   const targetUserId = req.query.userId || req.user.id;
 
-  if (targetUserId !== req.user.id) {
-    if (isPrivileged(req.user.role)) {
-      // allowed
-    } else if (req.user.role === 'consultant') {
-      const allowed = await consultantOwnsClient(req.user.id, targetUserId);
-      if (!allowed) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
-    } else {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
+  const canAccessTarget = await canAccessTargetUserScope(req.user, targetUserId);
+  if (!canAccessTarget) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
   const { rows } = await pool.query(
@@ -319,17 +499,189 @@ app.get('/api/decisions', authRequired, asyncHandler(async (req, res) => {
   return res.json(rows);
 }));
 
-app.post('/api/decisions', authRequired, asyncHandler(async (req, res) => {
-  const { title, description, step = 1, status = 'pending', outcome_reason = '' } = req.body;
+app.get('/api/decisions/archive', authRequired, asyncHandler(async (req, res) => {
+  const targetUserId = req.query.userId || req.user.id;
+  const canAccessTarget = await canAccessTargetUserScope(req.user, targetUserId);
+  if (!canAccessTarget) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
+  const statusFilter = req.query.status;
+  if (statusFilter && !['success', 'fail'].includes(statusFilter)) {
+    return res.status(400).json({ error: 'Invalid status filter' });
+  }
+
+  const fromDate = parseIsoDate(req.query.from);
+  const toDate = parseIsoDate(req.query.to);
+  if (req.query.from && !fromDate) {
+    return res.status(400).json({ error: 'Invalid from date' });
+  }
+  if (req.query.to && !toDate) {
+    return res.status(400).json({ error: 'Invalid to date' });
+  }
+
+  const limit = parsePositiveInt(req.query.limit, 20, { min: 1, max: 100 });
+  const offset = parsePositiveInt(req.query.offset, 0, { min: 0, max: 10000 });
+
+  const filterParams = [targetUserId, statusFilter || null, fromDate, toDate];
+  const filterSql = `
+    d.user_id = $1
+    and d.status in ('success', 'fail')
+    and ($2::text is null or d.status = $2)
+    and ($3::timestamptz is null or d.finalized_at >= $3)
+    and ($4::timestamptz is null or d.finalized_at <= $4)
+  `;
+
+  const dataParams = [...filterParams, limit, offset];
   const { rows } = await pool.query(
-    `insert into decisions (user_id, title, description, step, status, outcome_reason)
-     values ($1, $2, $3, $4, $5, $6)
-     returning *`,
-    [req.user.id, title || '', description || '', step, status, outcome_reason || ''],
+    `select
+       d.id,
+       d.title,
+       d.description,
+       d.created_at,
+       d.finalized_at,
+       d.status as latest_status,
+       d.outcome_reason as latest_outcome_reason,
+       d.latest_outcome_event_id,
+       coalesce(rev.revision_count, 0)::int as revision_count,
+       round(greatest(extract(epoch from (d.finalized_at - d.created_at)) / 86400.0, 0), 2) as time_to_outcome_days
+     from decisions d
+     left join lateral (
+       select count(*)::int as revision_count
+       from decision_outcome_events e
+       where e.decision_id = d.id
+         and e.event_type = 'revised'
+     ) rev on true
+     where ${filterSql}
+     order by d.finalized_at desc nulls last, d.created_at desc
+     limit $5
+     offset $6`,
+    dataParams,
   );
 
-  return res.status(201).json(rows[0]);
+  const totalResult = await pool.query(
+    `select count(*)::int as total
+     from decisions d
+     where ${filterSql}`,
+    filterParams,
+  );
+
+  return res.json({
+    items: rows,
+    total: totalResult.rows[0]?.total || 0,
+    limit,
+    offset,
+  });
+}));
+
+app.get('/api/decisions/stats', authRequired, asyncHandler(async (req, res) => {
+  const targetUserId = req.query.userId || req.user.id;
+  const canAccessTarget = await canAccessTargetUserScope(req.user, targetUserId);
+  if (!canAccessTarget) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const requestedWindow = req.query.window || 'all';
+  if (!['all', '30d', '90d'].includes(requestedWindow)) {
+    return res.status(400).json({ error: 'Invalid window value' });
+  }
+
+  const startDate = getWindowStartDate(requestedWindow);
+  const { rows } = await pool.query(
+    `select
+       count(*)::int as total_count,
+       count(*) filter (where status = 'success')::int as success_count,
+       count(*) filter (where status = 'fail')::int as fail_count,
+       count(*) filter (where status = 'pending')::int as pending_count,
+       count(*) filter (where status in ('success', 'fail'))::int as finalized_count,
+       percentile_cont(0.5) within group (
+         order by greatest(extract(epoch from (finalized_at - created_at)) / 86400.0, 0)
+       ) filter (where status in ('success', 'fail') and finalized_at is not null) as median_time_to_outcome_days
+     from decisions
+     where user_id = $1
+       and ($2::timestamptz is null or created_at >= $2)`,
+    [targetUserId, startDate],
+  );
+
+  const stats = rows[0] || {};
+  const totalCount = Number(stats.total_count || 0);
+  const successCount = Number(stats.success_count || 0);
+  const failCount = Number(stats.fail_count || 0);
+  const pendingCount = Number(stats.pending_count || 0);
+  const finalizedCount = Number(stats.finalized_count || 0);
+
+  const successRate = finalizedCount > 0 ? successCount / finalizedCount : null;
+  const completionRate = totalCount > 0 ? finalizedCount / totalCount : null;
+  const wilsonInterval = calculateWilsonInterval(successCount, finalizedCount);
+
+  return res.json({
+    window: requestedWindow,
+    total_count: totalCount,
+    finalized_count: finalizedCount,
+    success_count: successCount,
+    fail_count: failCount,
+    pending_count: pendingCount,
+    success_rate: successRate,
+    completion_rate: completionRate,
+    median_time_to_outcome_days: stats.median_time_to_outcome_days === null
+      ? null
+      : Number(stats.median_time_to_outcome_days),
+    success_rate_ci_95: wilsonInterval,
+    low_sample_size: finalizedCount < 20,
+  });
+}));
+
+app.post('/api/decisions', authRequired, asyncHandler(async (req, res) => {
+  const { title, description, step = 1, status = 'pending', outcome_reason = '' } = req.body;
+  if (!VALID_DECISION_STATUS.has(status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+
+    const { rows } = await client.query(
+      `insert into decisions (user_id, title, description, step, status, outcome_reason, finalized_at)
+       values ($1, $2, $3, $4, $5, $6, case when $5 in ('success', 'fail') then now() else null end)
+       returning *`,
+      [req.user.id, title || '', description || '', step, status, outcome_reason || ''],
+    );
+
+    let createdDecision = rows[0];
+    if (isFinalDecisionStatus(status)) {
+      const eventResult = await client.query(
+        `insert into decision_outcome_events (
+          decision_id,
+          actor_user_id,
+          event_type,
+          from_status,
+          to_status,
+          outcome_reason
+        )
+        values ($1, $2, 'finalized', 'pending', $3, $4)
+        returning id`,
+        [createdDecision.id, req.user.id, status, outcome_reason || ''],
+      );
+
+      const latestEventId = eventResult.rows[0].id;
+      const updated = await client.query(
+        `update decisions
+         set latest_outcome_event_id = $1
+         where id = $2
+         returning *`,
+        [latestEventId, createdDecision.id],
+      );
+      createdDecision = updated.rows[0];
+    }
+
+    await client.query('commit');
+    return res.status(201).json(createdDecision);
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
 }));
 
 app.patch('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {
@@ -344,15 +696,45 @@ app.patch('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const updatedDecision = await applyUpdate('decisions', decisionId, req.body, [
-    'title',
-    'description',
-    'step',
-    'status',
-    'outcome_reason',
-  ]);
+  const requestedUpdates = {
+    title: req.body.title,
+    description: req.body.description,
+    step: req.body.step,
+    status: req.body.status,
+    outcome_reason: req.body.outcome_reason,
+  };
 
-  return res.json(updatedDecision);
+  if (requestedUpdates.status !== undefined && !VALID_DECISION_STATUS.has(requestedUpdates.status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+
+  try {
+    const result = await updateDecisionWithOutcomeEvent({
+      decisionId,
+      actorUserId: req.user.id,
+      updates: requestedUpdates,
+      reflectionPayload: req.body.reflection_payload,
+    });
+
+    return res.json({
+      ...result.decision,
+      _outcome_event: result.outcomeEvent
+        ? {
+          id: result.outcomeEvent.id,
+          event_type: result.outcomeEvent.event_type,
+          created_at: result.outcomeEvent.created_at,
+        }
+        : null,
+    });
+  } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.status === 404) {
+      return res.status(404).json({ error: error.message });
+    }
+    throw error;
+  }
 }));
 
 app.delete('/api/decisions/:id', authRequired, asyncHandler(async (req, res) => {

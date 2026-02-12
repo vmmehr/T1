@@ -10,6 +10,7 @@ import Analysis from './views/Analysis';
 import Strategy from './views/Strategy';
 import ActionPlan from './views/ActionPlan';
 import DecisionOutcome from './views/DecisionOutcome';
+import Archive from './views/Archive';
 import Login from './views/Login';
 import Signup from './views/Signup';
 import Dashboard from './views/Dashboard';
@@ -64,6 +65,10 @@ const CurrentView = () => {
         })()}
       </div>
     );
+  }
+
+  if (isClientView && decisionViewMode === 'archive') {
+    return <Archive />;
   }
 
   // If staff is viewing a client's list (but no specific decision selected)
