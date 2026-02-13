@@ -395,6 +395,24 @@ const getTaskMeta = async (taskId) => {
   return rows[0] || null;
 };
 
+const getCommentMeta = async (commentId) => {
+  const { rows } = await pool.query(
+    `select
+       c.id,
+       c.decision_id,
+       c.user_id as comment_user_id,
+       d.user_id as decision_user_id,
+       owner.consultant_id,
+       owner.psychologist_id
+     from comments c
+     join decisions d on d.id = c.decision_id
+     join profiles owner on owner.id = d.user_id
+     where c.id = $1`,
+    [commentId],
+  );
+  return rows[0] || null;
+};
+
 const applyUpdate = async (table, id, updates, allowedColumns) => {
   const entries = Object.entries(updates).filter(([key, value]) => allowedColumns.includes(key) && value !== undefined);
   if (entries.length === 0) {
@@ -1553,6 +1571,38 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
   };
 
   return res.status(201).json(commentWithProfile);
+}));
+
+app.delete('/api/comments/:id', authRequired, asyncHandler(async (req, res) => {
+  const commentId = parsePositiveId(req.params.id);
+  if (!commentId) {
+    return res.status(400).json({ error: 'Invalid comment id' });
+  }
+
+  const commentMeta = await getCommentMeta(commentId);
+  if (!commentMeta) {
+    return res.status(404).json({ error: 'Comment not found' });
+  }
+
+  if (!canAccessDecision(req.user, {
+    user_id: commentMeta.decision_user_id,
+    consultant_id: commentMeta.consultant_id,
+    psychologist_id: commentMeta.psychologist_id,
+  })) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (String(commentMeta.comment_user_id) !== String(req.user.id)) {
+    return res.status(403).json({ error: 'You can only delete your own comments' });
+  }
+
+  await pool.query(
+    `delete from comments
+     where id = $1 and user_id = $2`,
+    [commentId, req.user.id],
+  );
+
+  return res.status(204).send();
 }));
 
 app.use((error, _req, res, next) => {

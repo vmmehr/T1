@@ -14,10 +14,19 @@ const CommentSection = ({
     newCount = null
 }) => {
     const { currentUser } = useAuth();
-    const { getComments, addComment, markTaskCommentsRead, markItemCommentsRead, getThreadSeenCount, markThreadSeen } = useComment();
+    const {
+        getComments,
+        addComment,
+        deleteComment,
+        markTaskCommentsRead,
+        markItemCommentsRead,
+        getThreadSeenCount,
+        markThreadSeen
+    } = useComment();
     const [newComment, setNewComment] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deletingIds, setDeletingIds] = useState({});
     const markReadKeyRef = useRef('');
     const isTaskThread = section === 'task' && Boolean(targetItemId);
     const isDecisionItemThread = section !== 'task' && Boolean(targetItemId);
@@ -144,6 +153,28 @@ const CommentSection = ({
         }
     };
 
+    const handleDelete = async (comment) => {
+        if (!comment?.id) return;
+        if (comment.is_pending) return;
+        if (String(comment.user_id) !== String(currentUser?.id)) return;
+        if (deletingIds[comment.id]) return;
+        if (!window.confirm('آیا از حذف این یادداشت مطمئن هستید؟')) return;
+
+        setSubmitError('');
+        setDeletingIds((prev) => ({ ...prev, [comment.id]: true }));
+        try {
+            await deleteComment(decisionId, comment.id);
+        } catch (error) {
+            setSubmitError(error?.message || 'Could not delete the comment.');
+        } finally {
+            setDeletingIds((prev) => {
+                const next = { ...prev };
+                delete next[comment.id];
+                return next;
+            });
+        }
+    };
+
     const isConsultant = currentUser?.role === 'consultant';
     const isStaff = isConsultant || ['psychologist', 'supervisor'].includes(currentUser?.role);
     const sectionTitle = targetItemId
@@ -181,6 +212,8 @@ const CommentSection = ({
                         : normalizedVisibility === 'psychologist_private'
                             ? 'Private (psychologist)'
                             : null;
+                    const canDelete = String(comment.user_id) === String(currentUser?.id) && !comment.is_pending;
+                    const isDeleting = Boolean(deletingIds[comment.id]);
 
                     return (
                         <div key={comment.id} className={`${styles.comment} ${normalizedVisibility !== 'public' ? styles.commentInternal : styles.commentPublic}`}>
@@ -190,6 +223,17 @@ const CommentSection = ({
                                     <span>{new Date(comment.created_at).toLocaleDateString('fa-IR')}</span>
                                     {badgeText && (
                                         <span className={styles.commentBadge}>{badgeText}</span>
+                                    )}
+                                    {canDelete && (
+                                        <button
+                                            type="button"
+                                            className={styles.deleteCommentButton}
+                                            onClick={() => handleDelete(comment)}
+                                            disabled={isDeleting}
+                                            title="حذف یادداشت"
+                                        >
+                                            {isDeleting ? '...' : 'حذف'}
+                                        </button>
                                     )}
                                 </span>
                             </div>

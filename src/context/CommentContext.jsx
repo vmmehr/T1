@@ -66,6 +66,7 @@ export const CommentProvider = ({ children }) => {
       ...newComment,
       id: Date.now(),
       created_at: new Date().toISOString(),
+      is_pending: true,
       profiles: currentUser
     };
 
@@ -85,6 +86,40 @@ export const CommentProvider = ({ children }) => {
       );
     } catch (error) {
       // Refetch to ensure consistency after error
+      fetchItems(decisionId);
+      throw error;
+    }
+  };
+
+  const deleteComment = async (decisionId, commentId) => {
+    if (!currentUser || !decisionId || !commentId) return;
+
+    const currentComments = decisionItems[decisionId]?.comments || [];
+    const targetComment = currentComments.find((comment) => String(comment.id) === String(commentId));
+    if (!targetComment) return;
+
+    if (String(targetComment.user_id) !== String(currentUser.id)) {
+      throw new Error('You can only delete your own comments.');
+    }
+
+    try {
+      await optimisticUpdate.optimisticDelete(
+        decisionId,
+        'comments',
+        commentId,
+        async () => {
+          try {
+            await api.comments.delete(commentId);
+            return { error: null };
+          } catch (error) {
+            return { error };
+          }
+        }
+      );
+
+      // Keep unread badges in sync after deletions.
+      await fetchItems(decisionId);
+    } catch (error) {
       fetchItems(decisionId);
       throw error;
     }
@@ -166,6 +201,7 @@ export const CommentProvider = ({ children }) => {
 
   const value = {
     addComment,
+    deleteComment,
     getComments,
     markTaskCommentsRead,
     markItemCommentsRead,

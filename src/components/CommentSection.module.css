@@ -145,6 +145,20 @@
   font-size: 0.7rem;
 }
 
+.deleteCommentButton {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.deleteCommentButton:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
 .emptyComments {
   font-size: 0.85rem;
   color: var(--color-text-muted);

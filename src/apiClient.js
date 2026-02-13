@@ -103,6 +103,7 @@ export const api = {
   },
   comments: {
     create: (data) => request('/api/comments', { method: 'POST', body: data }),
+    delete: (id) => request(`/api/comments/${id}`, { method: 'DELETE' }),
     markTaskRead: (taskId) => request(`/api/tasks/${taskId}/comments/read`, { method: 'POST' }),
     markDecisionItemRead: (itemId) => request(`/api/decision-items/${itemId}/comments/read`, { method: 'POST' }),
   },
