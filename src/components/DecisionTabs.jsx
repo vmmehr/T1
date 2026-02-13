@@ -1,6 +1,8 @@
 import React from 'react';
 import styles from './DecisionTabs.module.css';
 
+const faNumberFormatter = new Intl.NumberFormat('fa-IR');
+
 const STEP_SCOPE_BY_ID = {
     0: 'definition',
     1: 'analysis',
@@ -40,7 +42,7 @@ const DecisionTabs = ({ activeStep, currentStep, onTabChange, unreadCounts = {} 
                             <span>{tab.label}</span>
                             {unreadCount > 0 && (
                                 <span className={styles.tabUnreadBubble}>
-                                    {unreadCount}
+                                    {faNumberFormatter.format(unreadCount)}
                                 </span>
                             )}
                         </span>

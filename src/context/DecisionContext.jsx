@@ -255,6 +255,7 @@ export const DecisionProvider = ({ children }) => {
 
   const deleteDecision = async (id) => {
     if (isReadOnlyView) return;
+    if (typeof window !== 'undefined' && !window.confirm('آیا از حذف این تصمیم اطمینان دارید؟')) return;
 
     setDecisions(prev => prev.filter(d => d.id !== id));
     if (currentDecisionId === id) {
@@ -355,6 +356,7 @@ export const DecisionProvider = ({ children }) => {
 
   const removeItem = async (type, itemId) => {
     if (!currentDecisionId || isReadOnlyView) return;
+    if (typeof window !== 'undefined' && !window.confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
 
     // Optimistic
     setDecisionItems(prev => {

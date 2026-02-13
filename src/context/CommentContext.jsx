@@ -101,6 +101,7 @@ export const CommentProvider = ({ children }) => {
     if (String(targetComment.user_id) !== String(currentUser.id)) {
       throw new Error('You can only delete your own comments.');
     }
+    if (typeof window !== 'undefined' && !window.confirm('آیا از حذف این یادداشت مطمئن هستید؟')) return;
 
     try {
       await optimisticUpdate.optimisticDelete(

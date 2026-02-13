@@ -66,6 +66,7 @@ export const TaskProvider = ({ children }) => {
 
   const deleteTask = async (taskId) => {
     if (!currentDecisionId || isReadOnlyView) return;
+    if (typeof window !== 'undefined' && !window.confirm('آیا از حذف این راهکار اطمینان دارید؟')) return;
 
     return optimisticUpdate.optimisticDelete(
       currentDecisionId,

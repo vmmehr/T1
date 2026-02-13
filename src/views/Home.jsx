@@ -3,6 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { useDecision } from '../context/DecisionContext';
 import styles from './Home.module.css';
 
+const faNumberFormatter = new Intl.NumberFormat('fa-IR');
+const faPercentFormatter = new Intl.NumberFormat('fa-IR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+});
+
 const Home = () => {
     const { currentUser } = useAuth();
     const {
@@ -21,7 +27,8 @@ const Home = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const isStaffViewingClient = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role) && viewingUserId;
-    const formatPercent = (value) => (value === null || value === undefined ? '—' : `${(value * 100).toFixed(1)}%`);
+    const formatNumber = (value) => faNumberFormatter.format(Number(value ?? 0));
+    const formatPercent = (value) => (value === null || value === undefined ? '—' : `${faPercentFormatter.format(Number(value) * 100)}٪`);
     const activeDecisions = decisions.filter((decision) => decision.status === 'pending');
 
     const handleCreate = (e) => {
@@ -90,19 +97,19 @@ const Home = () => {
                 <div className={styles.kpiItem}>
                     <p className={styles.kpiLabel}>تصمیم‌های نهایی‌شده</p>
                     <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : (decisionStats?.finalized_count ?? 0)}
+                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.finalized_count)}
                     </p>
                 </div>
                 <div className={styles.kpiItem}>
                     <p className={styles.kpiLabel}>تصمیم‌های باز</p>
                     <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : (decisionStats?.pending_count ?? 0)}
+                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.pending_count)}
                     </p>
                 </div>
             </div>
             {!decisionStatsLoading && decisionStats?.low_sample_size && (
                 <p className={styles.lowSampleWarning}>
-                    حجم نمونه پایین است (کمتر از 20 تصمیم نهایی). این درصدها با احتیاط تفسیر شوند.
+                    حجم نمونه پایین است (کمتر از {formatNumber(20)} تصمیم نهایی). این درصدها با احتیاط تفسیر شوند.
                 </p>
             )}
 
@@ -186,14 +193,14 @@ const Home = () => {
                                     <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
                                         {(decision.unread_comments_count || 0) > 0 && (
                                             <span className={styles.decisionActionUnreadBubble}>
-                                                {decision.unread_comments_count}
+                                                {formatNumber(decision.unread_comments_count)}
                                             </span>
                                         )}
                                         مشاهده / ادامه
                                     </button>
                                     {!viewingUserId && (
                                         <button
-                                            onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
+                                            onClick={() => deleteDecision(decision.id)}
                                             className={`btn ${styles.actionButton} ${styles.deleteButton}`}
                                         >
                                             حذف

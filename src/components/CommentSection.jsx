@@ -158,7 +158,6 @@ const CommentSection = ({
         if (comment.is_pending) return;
         if (String(comment.user_id) !== String(currentUser?.id)) return;
         if (deletingIds[comment.id]) return;
-        if (!window.confirm('آیا از حذف این یادداشت مطمئن هستید؟')) return;
 
         setSubmitError('');
         setDeletingIds((prev) => ({ ...prev, [comment.id]: true }));

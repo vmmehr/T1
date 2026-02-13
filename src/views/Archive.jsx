@@ -3,8 +3,15 @@ import { useDecision } from '../context/DecisionContext';
 import styles from './Archive.module.css';
 
 const PAGE_SIZE = 10;
+const faNumberFormatter = new Intl.NumberFormat('fa-IR');
+const faDecimalFormatter = new Intl.NumberFormat('fa-IR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
-const formatPercent = (value) => (value === null || value === undefined ? '—' : `${(value * 100).toFixed(1)}%`);
+const formatNumber = (value) => faNumberFormatter.format(Number(value ?? 0));
+const formatDecimal = (value) => faDecimalFormatter.format(Number(value ?? 0));
+const formatPercent = (value) => (value === null || value === undefined ? '—' : `${formatDecimal(value * 100)}٪`);
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString('fa-IR') : '—');
 
 const Archive = () => {
@@ -78,17 +85,17 @@ const Archive = () => {
 
       <div className={`glass-panel ${styles.trendGrid}`}>
         <div className={styles.trendCard}>
-          <p className={styles.trendLabel}>موفقیت 30 روز اخیر</p>
+          <p className={styles.trendLabel}>موفقیت ۳۰ روز اخیر</p>
           <p className={styles.trendValue}>{formatPercent(stats30?.success_rate)}</p>
         </div>
         <div className={styles.trendCard}>
-          <p className={styles.trendLabel}>موفقیت 90 روز اخیر</p>
+          <p className={styles.trendLabel}>موفقیت ۹۰ روز اخیر</p>
           <p className={styles.trendValue}>{formatPercent(stats90?.success_rate)}</p>
         </div>
         <div className={styles.trendCard}>
-          <p className={styles.trendLabel}>روند تکمیل (30د - 90د)</p>
+          <p className={styles.trendLabel}>روند تکمیل (۳۰د - ۹۰د)</p>
           <p className={styles.trendValue}>
-            {completionDelta === null ? '—' : `${completionDelta > 0 ? '+' : ''}${(completionDelta * 100).toFixed(1)}%`}
+            {completionDelta === null ? '—' : `${completionDelta > 0 ? '+' : ''}${formatPercent(completionDelta)}`}
           </p>
         </div>
         <div className={styles.trendCard}>
@@ -96,7 +103,7 @@ const Archive = () => {
           <p className={styles.trendValue}>
             {decisionStats?.median_time_to_outcome_days === null || decisionStats?.median_time_to_outcome_days === undefined
               ? '—'
-              : `${Number(decisionStats.median_time_to_outcome_days).toFixed(1)} روز`}
+              : `${formatDecimal(decisionStats.median_time_to_outcome_days)} روز`}
           </p>
         </div>
       </div>
@@ -172,11 +179,11 @@ const Archive = () => {
                     </span>
                   </td>
                   <td className={styles.reasonCell}>{item.latest_outcome_reason || '—'}</td>
-                  <td>{item.revision_count}</td>
+                  <td>{formatNumber(item.revision_count)}</td>
                   <td>
                     {item.time_to_outcome_days === null || item.time_to_outcome_days === undefined
                       ? '—'
-                      : `${Number(item.time_to_outcome_days).toFixed(1)} روز`}
+                      : `${formatDecimal(item.time_to_outcome_days)} روز`}
                   </td>
                   <td>
                     <button
@@ -201,7 +208,7 @@ const Archive = () => {
         >
           قبلی
         </button>
-        <span>{`صفحه ${currentPage} از ${totalPages}`}</span>
+        <span>{`صفحه ${formatNumber(currentPage)} از ${formatNumber(totalPages)}`}</span>
         <button
           className="btn"
           disabled={currentPage >= totalPages}

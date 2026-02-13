@@ -4,6 +4,8 @@ import { useDecision } from '../context/DecisionContext';
 import Home from './Home';
 import styles from './Dashboard.module.css';
 
+const faNumberFormatter = new Intl.NumberFormat('fa-IR');
+
 const Dashboard = () => {
     const {
         currentUser,
@@ -29,6 +31,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const formatNumber = (value) => faNumberFormatter.format(Number(value ?? 0));
 
     const loadData = useCallback(async () => {
         if (!currentUser) return;
@@ -62,7 +65,7 @@ const Dashboard = () => {
             }
         } catch (fetchError) {
             console.error('Error fetching dashboard data:', fetchError);
-            setError(fetchError.message || 'Failed to load dashboard data');
+            setError(fetchError.message || 'بارگذاری اطلاعات داشبورد انجام نشد.');
         } finally {
             setLoading(false);
         }
@@ -145,7 +148,7 @@ const Dashboard = () => {
     };
 
     if (!currentUser) return null;
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
+    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>در حال بارگذاری...</div>;
 
     if (currentUser.role === 'client') {
         return (
@@ -170,18 +173,18 @@ const Dashboard = () => {
     }
 
     if (currentUser.role === 'consultant' || currentUser.role === 'psychologist') {
-        const roleLabel = currentUser.role === 'consultant' ? 'Consultant' : 'Psychologist';
+        const roleLabel = currentUser.role === 'consultant' ? 'مشاور' : 'روان‌شناس';
 
         return (
             <div className={styles.container}>
-                <h2>{roleLabel} Dashboard</h2>
-                <p>Welcome, {currentUser.full_name || currentUser.username}</p>
+                <h2>داشبورد {roleLabel}</h2>
+                <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
                 {error && <p className={styles.errorText}>{error}</p>}
 
                 <div style={{ marginTop: '2rem' }}>
-                    <h3>Assigned Clients</h3>
+                    <h3>مراجع‌های ارجاع‌شده</h3>
                     {myClients.length === 0 ? (
-                        <p>No clients are currently assigned to you.</p>
+                        <p>در حال حاضر مراجعی به شما ارجاع نشده است.</p>
                     ) : (
                         <div className={styles.clientsGrid}>
                             {myClients.map(client => (
@@ -190,16 +193,16 @@ const Dashboard = () => {
                                         <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
                                         {(client.unread_comments_count || 0) > 0 && (
                                             <span className={styles.unreadBubble}>
-                                                {client.unread_comments_count}
+                                                {formatNumber(client.unread_comments_count)}
                                             </span>
                                         )}
                                     </div>
-                                    <p className={styles.clientUsername}>Username: {client.username}</p>
+                                    <p className={styles.clientUsername}>نام کاربری: {client.username}</p>
                                     <button
                                         className="btn btn-primary"
                                         onClick={() => handleOpenClientCase(client.id)}
                                     >
-                                        View Case
+                                        مشاهده پرونده
                                     </button>
                                 </div>
                             ))}
@@ -321,7 +324,7 @@ const Dashboard = () => {
         );
     }
 
-    return <div>Unknown role</div>;
+    return <div>نقش کاربری نامعتبر است.</div>;
 };
 
 export default Dashboard;
