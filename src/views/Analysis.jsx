@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDecision } from '../context/DecisionContext';
 import CommentSection from '../components/CommentSection';
 
-const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, decisionId, readOnly }) => {
+const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, decisionId, readOnly, getItemUnreadCount }) => {
     const [newItem, setNewItem] = useState('');
     const [newWeight, setNewWeight] = useState(50);
 
@@ -23,7 +23,9 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
             </h3>
 
             <div style={{ marginTop: 'var(--spacing-md)' }}>
-                {items.map(item => (
+                {items.map(item => {
+                    const unreadCount = getItemUnreadCount(decisionId, item.id);
+                    return (
                     <div key={item.id} style={{
                         background: 'rgba(255,255,255,0.5)',
                         padding: '1rem',
@@ -61,9 +63,11 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
                             decisionId={decisionId}
                             targetItemId={item.id}
                             compact={true}
+                            newCount={unreadCount}
                         />
                     </div>
-                ))}
+                    );
+                })}
             </div>
 
             <form onSubmit={handleAdd} style={{ marginTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
@@ -98,7 +102,23 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
 };
 
 const Analysis = () => {
-    const { currentDecision, addPro, addCon, updateItemWeight, removeItem, setStep, setViewStep, isReadOnlyView } = useDecision();
+    const {
+        currentDecision,
+        addPro,
+        addCon,
+        updateItemWeight,
+        removeItem,
+        setStep,
+        setViewStep,
+        isReadOnlyView,
+        markStepCommentsRead,
+        getItemUnreadCount
+    } = useDecision();
+
+    useEffect(() => {
+        if (!currentDecision?.id) return;
+        markStepCommentsRead('analysis');
+    }, [currentDecision?.id, markStepCommentsRead]);
 
     const totalPros = currentDecision.pros.reduce((acc, curr) => acc + curr.weight, 0);
     const totalCons = currentDecision.cons.reduce((acc, curr) => acc + curr.weight, 0);
@@ -125,6 +145,7 @@ const Analysis = () => {
                     color="#10b981" // Emerald 500
                     decisionId={currentDecision.id}
                     readOnly={isReadOnlyView}
+                    getItemUnreadCount={getItemUnreadCount}
                 />
                 <ItemList
                     title="معایب (Cons)"
@@ -135,6 +156,7 @@ const Analysis = () => {
                     color="#ef4444" // Red 500
                     decisionId={currentDecision.id}
                     readOnly={isReadOnlyView}
+                    getItemUnreadCount={getItemUnreadCount}
                 />
             </div>
 

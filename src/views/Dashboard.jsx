@@ -8,6 +8,7 @@ const Dashboard = () => {
     const {
         currentUser,
         getMyClients,
+        markClientCommentsRead,
         getAllUsers,
         getMyAssignments,
         createUserByAdmin,
@@ -66,6 +67,21 @@ const Dashboard = () => {
             setLoading(false);
         }
     }, [currentUser, getAllUsers, getMyAssignments, getMyClients]);
+
+    const handleOpenClientCase = async (clientId) => {
+        try {
+            await markClientCommentsRead(clientId);
+            setMyClients((prev) => prev.map((client) => (
+                String(client.id) === String(clientId)
+                    ? { ...client, unread_comments_count: 0 }
+                    : client
+            )));
+        } catch (markError) {
+            console.error('Error marking client comments as read:', markError);
+        } finally {
+            setViewingUserId(clientId);
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -170,11 +186,18 @@ const Dashboard = () => {
                         <div className={styles.clientsGrid}>
                             {myClients.map(client => (
                                 <div key={client.id} className={styles.clientCard}>
-                                    <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
+                                    <div className={styles.clientNameRow}>
+                                        <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
+                                        {(client.unread_comments_count || 0) > 0 && (
+                                            <span className={styles.unreadBubble}>
+                                                {client.unread_comments_count}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className={styles.clientUsername}>Username: {client.username}</p>
                                     <button
                                         className="btn btn-primary"
-                                        onClick={() => setViewingUserId(client.id)}
+                                        onClick={() => handleOpenClientCase(client.id)}
                                     >
                                         View Case
                                     </button>

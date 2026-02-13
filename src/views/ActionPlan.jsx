@@ -32,7 +32,7 @@ const ActionPlan = () => {
                 strategy: task.content,
                 text: parent.text,
                 type: type,
-                is_completed: task.is_completed // Include completion status
+                is_completed: task.is_completed, // Include completion status
             });
         }
     });

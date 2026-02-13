@@ -184,6 +184,11 @@ const Home = () => {
                                         </button>
                                     )}
                                     <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
+                                        {(decision.unread_comments_count || 0) > 0 && (
+                                            <span className={styles.decisionActionUnreadBubble}>
+                                                {decision.unread_comments_count}
+                                            </span>
+                                        )}
                                         مشاهده / ادامه
                                     </button>
                                     {!viewingUserId && (

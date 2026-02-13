@@ -37,6 +37,7 @@ const isStaff = (role) => isConsultant(role) || isPsychologist(role) || isSuperv
 const VALID_DECISION_STATUS = new Set(['pending', 'success', 'fail']);
 const FINAL_DECISION_STATUSES = new Set(['success', 'fail']);
 const COMMENT_VISIBILITY_VALUES = new Set(['public', 'staff_private', 'psychologist_private']);
+const COMMENT_STEP_SCOPES = new Set(['definition', 'analysis', 'strategy']);
 
 const publicUser = (user) => ({
   id: user.id,
@@ -189,6 +190,15 @@ const canAccessTargetUserScope = async (actor, targetUserId) => {
 };
 
 const normalizeVisibilityInput = (value) => (value === 'internal' ? 'staff_private' : value);
+const getReadableCommentVisibilitiesForRole = (role) => {
+  if (isSupervisor(role) || isPsychologist(role)) {
+    return ['public', 'staff_private', 'psychologist_private'];
+  }
+  if (isConsultant(role)) {
+    return ['public', 'staff_private'];
+  }
+  return ['public'];
+};
 const isCommentVisibilityConstraintError = (error) => {
   if (!error || error.code !== '23514') return false;
   const details = `${error.constraint || ''} ${error.message || ''}`.toLowerCase();
@@ -197,14 +207,30 @@ const isCommentVisibilityConstraintError = (error) => {
 
 const getReadableCommentVisibilities = (actor, decisionMeta) => {
   if (actor.id === decisionMeta.user_id) return ['public'];
-  if (isSupervisor(actor.role)) return ['public', 'staff_private', 'psychologist_private'];
+  if (isSupervisor(actor.role)) return getReadableCommentVisibilitiesForRole(actor.role);
   if (isPsychologist(actor.role) && actor.id === decisionMeta.psychologist_id) {
-    return ['public', 'staff_private', 'psychologist_private'];
+    return getReadableCommentVisibilitiesForRole(actor.role);
   }
   if (isConsultant(actor.role) && actor.id === decisionMeta.consultant_id) {
-    return ['public', 'staff_private'];
+    return getReadableCommentVisibilitiesForRole(actor.role);
   }
   return ['public'];
+};
+
+const resolveCommentStepScope = (comment) => {
+  if (comment.task_id !== null && comment.task_id !== undefined) {
+    return 'strategy';
+  }
+  if (comment.target_item_id !== null && comment.target_item_id !== undefined) {
+    return 'analysis';
+  }
+  if (comment.section === 'strategy') {
+    return 'strategy';
+  }
+  if (comment.section === 'outcome_reflection') {
+    return null;
+  }
+  return 'definition';
 };
 
 const getDecisionByIdForUpdate = async (client, decisionId) => {
@@ -470,14 +496,66 @@ app.get('/api/profiles/me/clients', authRequired, asyncHandler(async (req, res) 
   }
 
   const assignmentColumn = isConsultant(req.user.role) ? 'consultant_id' : 'psychologist_id';
+  const readableVisibilities = getReadableCommentVisibilitiesForRole(req.user.role);
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id, psychologist_id
-     from profiles
-     where role = 'client' and ${assignmentColumn} = $1
-     order by full_name asc nulls last, username asc`,
-    [req.user.id],
+    `select
+       p.id,
+       p.username,
+       p.full_name,
+       p.role,
+       p.consultant_id,
+       p.psychologist_id,
+       coalesce(unread.unread_comments_count, 0)::int as unread_comments_count
+     from profiles p
+     left join lateral (
+       select count(*)::int as unread_comments_count
+       from decisions d
+       join comments c on c.decision_id = d.id
+       left join client_comment_reads ccr
+         on ccr.staff_user_id = $1
+        and ccr.client_user_id = p.id
+       where d.user_id = p.id
+         and c.user_id <> $1
+         and (case when c.visibility = 'internal' then 'staff_private' else c.visibility end) = any($2::text[])
+         and c.created_at > coalesce(ccr.last_read_at, 'epoch'::timestamptz)
+     ) unread on true
+     where p.role = 'client'
+       and p.${assignmentColumn} = $1
+     order by p.full_name asc nulls last, p.username asc`,
+    [req.user.id, readableVisibilities],
   );
   return res.json(rows);
+}));
+
+app.post('/api/profiles/me/clients/:clientId/comments/read', authRequired, asyncHandler(async (req, res) => {
+  if (!isConsultant(req.user.role) && !isPsychologist(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const clientId = req.params.clientId;
+  const assignmentColumn = isConsultant(req.user.role) ? 'consultant_id' : 'psychologist_id';
+  const { rows: clientRows } = await pool.query(
+    `select id
+     from profiles
+     where id = $1
+       and role = 'client'
+       and ${assignmentColumn} = $2`,
+    [clientId, req.user.id],
+  );
+
+  if (clientRows.length === 0) {
+    return res.status(404).json({ error: 'Client not found' });
+  }
+
+  await pool.query(
+    `insert into client_comment_reads (staff_user_id, client_user_id, last_read_at)
+     values ($1, $2, now())
+     on conflict (staff_user_id, client_user_id)
+     do update set last_read_at = excluded.last_read_at`,
+    [req.user.id, clientId],
+  );
+
+  return res.json({ ok: true, client_id: clientId });
 }));
 
 app.get('/api/profiles/:consultantId/clients', authRequired, asyncHandler(async (req, res) => {
@@ -702,12 +780,40 @@ app.get('/api/decisions', authRequired, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
+  const readableVisibilities = String(targetUserId) === String(req.user.id)
+    ? ['public']
+    : getReadableCommentVisibilitiesForRole(req.user.role);
   const { rows } = await pool.query(
-    `select *
-     from decisions
-     where user_id = $1
-     order by created_at desc`,
-    [targetUserId],
+    `select
+       d.*,
+       coalesce(unread.unread_comments_count, 0)::int as unread_comments_count
+     from decisions d
+     left join lateral (
+       select count(*)::int as unread_comments_count
+       from comments c
+       left join task_comment_reads tcr
+         on c.task_id is not null
+        and tcr.user_id = $2
+        and tcr.task_id = c.task_id
+       left join decision_step_comment_reads dsr
+         on c.task_id is null
+        and c.section <> 'outcome_reflection'
+        and dsr.user_id = $2
+        and dsr.decision_id = d.id
+        and dsr.step_scope = case
+          when c.target_item_id is not null then 'analysis'
+          when c.section = 'strategy' then 'strategy'
+          else 'definition'
+        end
+       where c.decision_id = d.id
+         and c.user_id <> $2
+         and (case when c.visibility = 'internal' then 'staff_private' else c.visibility end) = any($3::text[])
+         and c.section <> 'outcome_reflection'
+         and c.created_at > coalesce(tcr.last_read_at, dsr.last_read_at, 'epoch'::timestamptz)
+     ) unread on true
+     where d.user_id = $1
+     order by d.created_at desc`,
+    [targetUserId, req.user.id, readableVisibilities],
   );
   return res.json(rows);
 }));
@@ -1034,7 +1140,121 @@ app.get('/api/decisions/:id/details', authRequired, asyncHandler(async (req, res
     [decisionId, readableVisibilities],
   );
 
-  return res.json({ items, tasks, comments });
+  const taskIds = tasks.map((task) => task.id);
+  const taskUnreadCounts = {};
+  if (taskIds.length > 0) {
+    const { rows: unreadRows } = await pool.query(
+      `select
+         c.task_id,
+         count(*)::int as unread_count
+       from comments c
+       left join task_comment_reads tcr
+         on tcr.user_id = $2
+        and tcr.task_id = c.task_id
+       where c.decision_id = $1
+         and c.task_id = any($3::bigint[])
+         and c.user_id <> $2
+         and (case when c.visibility = 'internal' then 'staff_private' else c.visibility end) = any($4::text[])
+         and c.created_at > coalesce(tcr.last_read_at, 'epoch'::timestamptz)
+       group by c.task_id`,
+      [decisionId, req.user.id, taskIds, readableVisibilities],
+    );
+
+    unreadRows.forEach((row) => {
+      taskUnreadCounts[row.task_id] = Number(row.unread_count) || 0;
+    });
+  }
+
+  const itemUnreadCounts = {};
+  if (itemIds.length > 0) {
+    const { rows: unreadItemRows } = await pool.query(
+      `select
+         c.target_item_id as item_id,
+         count(*)::int as unread_count
+       from comments c
+       left join decision_item_comment_reads dicr
+         on dicr.user_id = $2
+        and dicr.decision_item_id = c.target_item_id
+       where c.decision_id = $1
+         and c.target_item_id = any($3::bigint[])
+         and (c.task_id is null)
+         and c.user_id <> $2
+         and (case when c.visibility = 'internal' then 'staff_private' else c.visibility end) = any($4::text[])
+         and c.created_at > coalesce(dicr.last_read_at, 'epoch'::timestamptz)
+       group by c.target_item_id`,
+      [decisionId, req.user.id, itemIds, readableVisibilities],
+    );
+
+    unreadItemRows.forEach((row) => {
+      itemUnreadCounts[row.item_id] = Number(row.unread_count) || 0;
+    });
+  }
+
+  const { rows: stepReadRows } = await pool.query(
+    `select step_scope, last_read_at
+     from decision_step_comment_reads
+     where user_id = $1 and decision_id = $2`,
+    [req.user.id, decisionId],
+  );
+  const stepReadAt = { definition: 0, analysis: 0, strategy: 0 };
+  stepReadRows.forEach((row) => {
+    const scope = row.step_scope;
+    if (!COMMENT_STEP_SCOPES.has(scope)) return;
+    stepReadAt[scope] = Date.parse(row.last_read_at) || 0;
+  });
+
+  const stepUnreadCounts = { definition: 0, analysis: 0, strategy: 0, action_plan: 0 };
+  comments.forEach((comment) => {
+    if (String(comment.user_id) === String(req.user.id)) return;
+    if (comment.task_id !== null && comment.task_id !== undefined) return;
+
+    const scope = resolveCommentStepScope(comment);
+    if (!scope || !COMMENT_STEP_SCOPES.has(scope)) return;
+
+    const createdAt = Date.parse(comment.created_at) || 0;
+    if (createdAt > (stepReadAt[scope] || 0)) {
+      stepUnreadCounts[scope] += 1;
+    }
+  });
+
+  return res.json({
+    items,
+    tasks,
+    comments,
+    task_unread_counts: taskUnreadCounts,
+    item_unread_counts: itemUnreadCounts,
+    step_unread_counts: stepUnreadCounts,
+  });
+}));
+
+app.post('/api/decisions/:id/steps/:stepScope/read', authRequired, asyncHandler(async (req, res) => {
+  const decisionId = parsePositiveId(req.params.id);
+  if (!decisionId) {
+    return res.status(400).json({ error: 'Invalid decision id' });
+  }
+
+  const stepScope = String(req.params.stepScope || '').trim();
+  if (!COMMENT_STEP_SCOPES.has(stepScope)) {
+    return res.status(400).json({ error: 'Invalid step scope' });
+  }
+
+  const decisionMeta = await getDecisionMeta(decisionId);
+  if (!decisionMeta) {
+    return res.status(404).json({ error: 'Decision not found' });
+  }
+  if (!canAccessDecision(req.user, decisionMeta)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  await pool.query(
+    `insert into decision_step_comment_reads (user_id, decision_id, step_scope, last_read_at)
+     values ($1, $2, $3, now())
+     on conflict (user_id, decision_id, step_scope)
+     do update set last_read_at = excluded.last_read_at`,
+    [req.user.id, decisionId, stepScope],
+  );
+
+  return res.json({ ok: true, decision_id: decisionId, step_scope: stepScope });
 }));
 
 app.post('/api/decision-items', authRequired, asyncHandler(async (req, res) => {
@@ -1157,6 +1377,56 @@ app.delete('/api/tasks/:id', authRequired, asyncHandler(async (req, res) => {
 
   await pool.query(`delete from tasks where id = $1`, [taskId]);
   return res.status(204).send();
+}));
+
+app.post('/api/tasks/:id/comments/read', authRequired, asyncHandler(async (req, res) => {
+  const taskId = parsePositiveId(req.params.id);
+  if (!taskId) {
+    return res.status(400).json({ error: 'Invalid task id' });
+  }
+
+  const taskMeta = await getTaskMeta(taskId);
+  if (!taskMeta) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  if (!canAccessDecision(req.user, taskMeta)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  await pool.query(
+    `insert into task_comment_reads (user_id, task_id, last_read_at)
+     values ($1, $2, now())
+     on conflict (user_id, task_id)
+     do update set last_read_at = excluded.last_read_at`,
+    [req.user.id, taskId],
+  );
+
+  return res.json({ ok: true, task_id: taskId });
+}));
+
+app.post('/api/decision-items/:id/comments/read', authRequired, asyncHandler(async (req, res) => {
+  const itemId = parsePositiveId(req.params.id);
+  if (!itemId) {
+    return res.status(400).json({ error: 'Invalid decision item id' });
+  }
+
+  const decisionItemMeta = await getDecisionItemMeta(itemId);
+  if (!decisionItemMeta) {
+    return res.status(404).json({ error: 'Decision item not found' });
+  }
+  if (!canAccessDecision(req.user, decisionItemMeta)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  await pool.query(
+    `insert into decision_item_comment_reads (user_id, decision_item_id, last_read_at)
+     values ($1, $2, now())
+     on conflict (user_id, decision_item_id)
+     do update set last_read_at = excluded.last_read_at`,
+    [req.user.id, itemId],
+  );
+
+  return res.json({ ok: true, decision_item_id: itemId });
 }));
 
 app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {

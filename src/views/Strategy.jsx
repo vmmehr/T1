@@ -9,7 +9,7 @@ const StrategyItem = ({ item, type, readOnly }) => {
     const color = isPro ? '#10b981' : '#ef4444';
     const question = isPro ? 'چگونه می‌توانیم این مورد را تقویت کنیم؟' : 'چگونه می‌توانیم این مورد را کاهش دهیم یا حذف کنیم؟';
 
-    const { getTasks, addTask, deleteTask } = useTask();
+    const { getTasks, addTask, deleteTask, getTaskUnreadCount } = useTask();
     const [newTaskText, setNewTaskText] = React.useState('');
 
     // Get tasks for this specific item
@@ -45,13 +45,21 @@ const StrategyItem = ({ item, type, readOnly }) => {
 
                 {/* List of Tasks */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                    {tasks.map(task => (
+                    {tasks.map(task => {
+                        const unreadCount = getTaskUnreadCount(item.decision_id, task.id);
+                        return (
                         <div key={task.id} style={{
                             background: 'rgba(255,255,255,0.5)',
                             borderRadius: 'var(--radius-sm)',
                             padding: '0.75rem',
-                            border: '1px solid var(--color-border)'
+                            border: '1px solid var(--color-border)',
+                            position: 'relative'
                         }}>
+                            {unreadCount > 0 && (
+                                <span className={styles.taskUnreadBubble}>
+                                    {unreadCount}
+                                </span>
+                            )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                                 <div style={{ flex: 1 }}>{task.content}</div>
                                 <button
@@ -80,6 +88,7 @@ const StrategyItem = ({ item, type, readOnly }) => {
                                         targetItemId={task.id}
                                         section="task"
                                         compact={true}
+                                        newCount={unreadCount}
                                     />
                                 ) : (
                                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
@@ -88,7 +97,8 @@ const StrategyItem = ({ item, type, readOnly }) => {
                                 )}
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
 
                     {tasks.length === 0 && (
                         <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
@@ -117,7 +127,20 @@ const StrategyItem = ({ item, type, readOnly }) => {
 };
 
 const Strategy = () => {
-    const { currentDecision, setStep, setViewStep, isReadOnlyView } = useDecision();
+    const {
+        currentDecision,
+        setStep,
+        setViewStep,
+        isReadOnlyView,
+        markStepCommentsRead,
+        getStepUnreadCount
+    } = useDecision();
+    const strategyUnreadCount = getStepUnreadCount(currentDecision?.id, 'strategy');
+
+    React.useEffect(() => {
+        if (!currentDecision?.id) return;
+        markStepCommentsRead('strategy');
+    }, [currentDecision?.id, markStepCommentsRead]);
 
     // Sort items by weight (descending) to focus on most important ones first
     const sortedPros = [...currentDecision.pros].sort((a, b) => b.weight - a.weight);
@@ -167,7 +190,11 @@ const Strategy = () => {
                 </button>
                 <div className={styles.sectionFooter}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--color-text-muted)' }}>یادداشت‌های استراتژی</h3>
-                    <CommentSection decisionId={currentDecision.id} section="strategy" />
+                    <CommentSection
+                        decisionId={currentDecision.id}
+                        section="strategy"
+                        newCount={strategyUnreadCount}
+                    />
                 </div>
             </div>
         </div>

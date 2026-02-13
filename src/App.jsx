@@ -25,6 +25,8 @@ const CurrentView = () => {
     viewStep,
     setViewStep,
     decisionViewMode,
+    getStepUnreadCount,
+    getTaskUnreadTotal,
   } = useDecision();
   const { currentUser } = useAuth();
 
@@ -35,6 +37,7 @@ const CurrentView = () => {
   const isClientView = currentUser?.role === 'client' || isStaffViewingClient;
 
   if (isClientView && currentDecision) {
+    const decisionId = currentDecision.id;
     if (decisionViewMode === 'outcome') {
       return <DecisionOutcome />;
     }
@@ -51,6 +54,12 @@ const CurrentView = () => {
           activeStep={viewStep ?? currentDecision.step}
           currentStep={currentDecision.step}
           onTabChange={(step) => setViewStep(step)}
+          unreadCounts={{
+            definition: getStepUnreadCount(decisionId, 'definition'),
+            analysis: getStepUnreadCount(decisionId, 'analysis'),
+            strategy: getStepUnreadCount(decisionId, 'strategy') + getTaskUnreadTotal(decisionId),
+            action_plan: 0,
+          }}
         />
 
         {(() => {

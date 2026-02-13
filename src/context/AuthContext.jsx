@@ -66,6 +66,10 @@ export const AuthProvider = ({ children }) => {
         return api.profiles.getMyClients();
     }, []);
 
+    const markClientCommentsRead = useCallback(async (clientId) => {
+        return api.profiles.markClientCommentsRead(clientId);
+    }, []);
+
     const getAllConsultants = useCallback(async () => {
         return api.profiles.getAllConsultants();
     }, []);
@@ -92,6 +96,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         getMyClients,
+        markClientCommentsRead,
         getAllConsultants,
         getAllUsers,
         getMyAssignments,
@@ -103,6 +108,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         getMyClients,
+        markClientCommentsRead,
         getAllConsultants,
         getAllUsers,
         getMyAssignments,

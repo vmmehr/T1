@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useDecision } from './DecisionContext';
 import { api } from '../apiClient';
@@ -17,10 +17,15 @@ export const useComment = () => {
 export const CommentProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const { decisionItems, setDecisionItems, fetchItems } = useDecision();
+  const [threadSeenCounts, setThreadSeenCounts] = useState({});
 
   // Note: We don't use fetchData in the hook because decisionId varies per call
   // Manual rollback will be handled by the hook, and we'll refetch on error if needed
   const optimisticUpdate = useOptimisticUpdate(setDecisionItems, null);
+
+  useEffect(() => {
+    setThreadSeenCounts({});
+  }, [currentUser?.id]);
 
   const addComment = async (decisionId, content, targetItemId = null, visibility = 'public', section = 'general') => {
     if (!currentUser) return;
@@ -89,9 +94,83 @@ export const CommentProvider = ({ children }) => {
     return decisionItems[decisionId]?.comments || [];
   };
 
+  const markTaskCommentsRead = async (decisionId, taskId) => {
+    if (!currentUser || !decisionId || !taskId) return;
+
+    setDecisionItems((prev) => {
+      const current = prev[decisionId] || {};
+      const taskUnreadCounts = { ...(current.taskUnreadCounts || {}) };
+      taskUnreadCounts[taskId] = 0;
+      return {
+        ...prev,
+        [decisionId]: {
+          ...current,
+          taskUnreadCounts,
+        },
+      };
+    });
+
+    try {
+      await api.comments.markTaskRead(taskId);
+    } catch (error) {
+      fetchItems(decisionId);
+      throw error;
+    }
+  };
+
+  const markItemCommentsRead = async (decisionId, itemId) => {
+    if (!currentUser || !decisionId || !itemId) return;
+
+    setDecisionItems((prev) => {
+      const current = prev[decisionId] || {};
+      const itemUnreadCounts = { ...(current.itemUnreadCounts || {}) };
+      itemUnreadCounts[itemId] = 0;
+      return {
+        ...prev,
+        [decisionId]: {
+          ...current,
+          itemUnreadCounts,
+        },
+      };
+    });
+
+    try {
+      await api.comments.markDecisionItemRead(itemId);
+    } catch (error) {
+      fetchItems(decisionId);
+      throw error;
+    }
+  };
+
+  const getThreadSeenCount = useCallback((threadKey) => {
+    if (!threadKey) return undefined;
+    if (!Object.prototype.hasOwnProperty.call(threadSeenCounts, threadKey)) {
+      return undefined;
+    }
+    return Number(threadSeenCounts[threadKey] || 0);
+  }, [threadSeenCounts]);
+
+  const markThreadSeen = useCallback((threadKey, seenCount) => {
+    if (!threadKey) return;
+    const normalizedSeenCount = Math.max(Number(seenCount) || 0, 0);
+
+    setThreadSeenCounts((prev) => {
+      const previousSeenCount = Number(prev[threadKey] || 0);
+      if (previousSeenCount === normalizedSeenCount) return prev;
+      return {
+        ...prev,
+        [threadKey]: normalizedSeenCount,
+      };
+    });
+  }, []);
+
   const value = {
     addComment,
-    getComments
+    getComments,
+    markTaskCommentsRead,
+    markItemCommentsRead,
+    getThreadSeenCount,
+    markThreadSeen
   };
 
   return (

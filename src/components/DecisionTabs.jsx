@@ -1,7 +1,14 @@
 import React from 'react';
 import styles from './DecisionTabs.module.css';
 
-const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
+const STEP_SCOPE_BY_ID = {
+    0: 'definition',
+    1: 'analysis',
+    2: 'strategy',
+    3: 'action_plan'
+};
+
+const DecisionTabs = ({ activeStep, currentStep, onTabChange, unreadCounts = {} }) => {
     const tabs = [
         { id: 0, label: 'تعریف تصمیم' },
         { id: 1, label: 'تحلیل (مزایا/معایب)' },
@@ -14,6 +21,10 @@ const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
             {tabs.map((tab) => {
                 const isDisabled = tab.id > currentStep;
                 const isActive = tab.id === activeStep;
+                const stepScope = STEP_SCOPE_BY_ID[tab.id];
+                const unreadCount = stepScope === 'action_plan'
+                    ? 0
+                    : Number(unreadCounts?.[stepScope] || 0);
 
                 return (
                     <button
@@ -25,7 +36,14 @@ const DecisionTabs = ({ activeStep, currentStep, onTabChange }) => {
                             color: !isActive && !isDisabled ? 'var(--color-text)' : undefined
                         }}
                     >
-                        {tab.label}
+                        <span className={styles.tabLabelWrap}>
+                            <span>{tab.label}</span>
+                            {unreadCount > 0 && (
+                                <span className={styles.tabUnreadBubble}>
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </span>
                     </button>
                 );
             })}

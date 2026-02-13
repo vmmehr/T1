@@ -38,6 +38,8 @@ What this does:
 - `db-migrate`: applies:
   - `db/migrations/add_decision_archive_metrics.sql`
   - `db/migrations/add_staff_hierarchy_and_comment_visibility.sql`
+  - `db/migrations/add_comment_read_tracking.sql`
+  - `db/migrations/add_decision_step_comment_reads.sql`
 - `api`: runs `server/index.js` against Docker DB
 
 Check status:
@@ -78,11 +80,15 @@ docker compose up -d db
 If your database is already running with older schema, apply:
 - `db/migrations/add_decision_archive_metrics.sql`
 - `db/migrations/add_staff_hierarchy_and_comment_visibility.sql`
+- `db/migrations/add_comment_read_tracking.sql`
+- `db/migrations/add_decision_step_comment_reads.sql`
 
 Example:
 ```bash
 docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_decision_archive_metrics.sql
 docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_staff_hierarchy_and_comment_visibility.sql
+docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_comment_read_tracking.sql
+docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_decision_step_comment_reads.sql
 ```
 
 ## Optional Dev Staff Accounts

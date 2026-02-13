@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { api } from '../apiClient';
 
 const DecisionContext = createContext();
+const COMMENT_STEP_SCOPES = new Set(['definition', 'analysis', 'strategy']);
 
 export const useDecision = () => {
   const context = useContext(DecisionContext);
@@ -24,7 +25,7 @@ export const DecisionProvider = ({ children }) => {
   const [decisionStatsLoading, setDecisionStatsLoading] = useState(false);
 
   // Local state for items of the current decision to avoid constant refetching
-  // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [] } }
+  // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [], taskUnreadCounts: {}, itemUnreadCounts: {}, stepUnreadCounts: {} } }
   const [decisionItems, setDecisionItems] = useState({});
   const activeUserId = viewingUserId || currentUser?.id;
   const isStaffRole = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role);
@@ -101,13 +102,20 @@ export const DecisionProvider = ({ children }) => {
 
   const fetchItems = useCallback(async (decisionId) => {
     try {
-      const { items = [], tasks = [], comments = [] } = await api.decisions.details(decisionId);
+      const {
+        items = [],
+        tasks = [],
+        comments = [],
+        task_unread_counts: taskUnreadCounts = {},
+        item_unread_counts: itemUnreadCounts = {},
+        step_unread_counts: stepUnreadCounts = {},
+      } = await api.decisions.details(decisionId);
       const pros = items.filter(i => i.type === 'pro');
       const cons = items.filter(i => i.type === 'con');
 
       setDecisionItems(prev => ({
         ...prev,
-        [decisionId]: { pros, cons, tasks, comments }
+        [decisionId]: { pros, cons, tasks, comments, taskUnreadCounts, itemUnreadCounts, stepUnreadCounts }
       }));
     } catch (error) {
       console.error('Error fetching items:', error);
@@ -180,7 +188,18 @@ export const DecisionProvider = ({ children }) => {
     setViewStep(1); // Start at step 1
     setDecisionViewMode('flow');
     // Initialize empty items
-    setDecisionItems(prev => ({ ...prev, [data.id]: { pros: [], cons: [], tasks: [], comments: [] } }));
+    setDecisionItems(prev => ({
+      ...prev,
+      [data.id]: {
+        pros: [],
+        cons: [],
+        tasks: [],
+        comments: [],
+        taskUnreadCounts: {},
+        itemUnreadCounts: {},
+        stepUnreadCounts: {},
+      },
+    }));
     refreshDecisionStats();
   };
 
@@ -265,7 +284,15 @@ export const DecisionProvider = ({ children }) => {
     // Optimistic update
     const tempId = Date.now();
     setDecisionItems(prev => {
-      const current = prev[currentDecisionId] || { pros: [], cons: [], comments: [] };
+      const current = prev[currentDecisionId] || {
+        pros: [],
+        cons: [],
+        tasks: [],
+        comments: [],
+        taskUnreadCounts: {},
+        itemUnreadCounts: {},
+        stepUnreadCounts: {},
+      };
       return {
         ...prev,
         [currentDecisionId]: {
@@ -367,11 +394,54 @@ export const DecisionProvider = ({ children }) => {
     return updateDecision(currentDecisionId, { status, outcome_reason: reason });
   };
 
+  const getStepUnreadCount = useCallback((decisionId, stepScope) => {
+    if (!decisionId || !COMMENT_STEP_SCOPES.has(stepScope)) return 0;
+    const stepUnreadCounts = decisionItems[decisionId]?.stepUnreadCounts || {};
+    return Number(stepUnreadCounts?.[stepScope] || 0);
+  }, [decisionItems]);
+
+  const getTaskUnreadTotal = useCallback((decisionId) => {
+    if (!decisionId) return 0;
+    const taskUnreadCounts = decisionItems[decisionId]?.taskUnreadCounts || {};
+    return Object.values(taskUnreadCounts).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  }, [decisionItems]);
+
+  const getItemUnreadCount = useCallback((decisionId, itemId) => {
+    if (!decisionId || !itemId) return 0;
+    const itemUnreadCounts = decisionItems[decisionId]?.itemUnreadCounts || {};
+    return Number(itemUnreadCounts?.[itemId] || 0);
+  }, [decisionItems]);
+
+  const markStepCommentsRead = useCallback(async (stepScope) => {
+    if (!currentDecisionId || !COMMENT_STEP_SCOPES.has(stepScope)) return;
+
+    setDecisionItems((prev) => {
+      const current = prev[currentDecisionId] || {};
+      const stepUnreadCounts = { ...(current.stepUnreadCounts || {}) };
+      stepUnreadCounts[stepScope] = 0;
+      return {
+        ...prev,
+        [currentDecisionId]: {
+          ...current,
+          stepUnreadCounts,
+        },
+      };
+    });
+
+    try {
+      await api.decisions.markStepRead(currentDecisionId, stepScope);
+    } catch (error) {
+      console.error('Error marking step comments as read:', error);
+      fetchItems(currentDecisionId);
+    }
+  }, [currentDecisionId, fetchItems]);
+
   const goHome = () => {
     setCurrentDecisionId(null);
     setViewStep(null);
     setDecisionViewMode('flow');
     // Do NOT reset viewingUserId here, so consultant stays on client's list
+    fetchDecisions(activeUserId);
   };
 
   const updateDecisionInfo = (title, description) => {
@@ -410,6 +480,10 @@ export const DecisionProvider = ({ children }) => {
     decisionItems,
     setDecisionItems,
     currentDecisionId,
+    getStepUnreadCount,
+    getTaskUnreadTotal,
+    getItemUnreadCount,
+    markStepCommentsRead,
     fetchItems,
     refreshDecisionStats,
     fetchDecisionStats,

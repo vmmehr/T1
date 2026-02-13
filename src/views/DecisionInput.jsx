@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDecision } from '../context/DecisionContext';
 import CommentSection from '../components/CommentSection';
 import styles from './DecisionInput.module.css';
 
 const DecisionInput = () => {
-    const { currentDecision, updateDecisionInfo, isReadOnlyView } = useDecision();
+    const {
+        currentDecision,
+        updateDecisionInfo,
+        isReadOnlyView,
+        markStepCommentsRead,
+        getStepUnreadCount
+    } = useDecision();
     const [title, setTitle] = useState(currentDecision?.title || '');
     const [description, setDescription] = useState(currentDecision?.description || '');
+    const definitionUnreadCount = getStepUnreadCount(currentDecision?.id, 'definition');
+
+    useEffect(() => {
+        if (!currentDecision?.id) return;
+        markStepCommentsRead('definition');
+    }, [currentDecision?.id, markStepCommentsRead]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -62,7 +74,10 @@ const DecisionInput = () => {
             </form>
 
             <div style={{ marginTop: 'var(--spacing-lg)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--spacing-md)' }}>
-                <CommentSection decisionId={currentDecision.id} />
+                <CommentSection
+                    decisionId={currentDecision.id}
+                    newCount={definitionUnreadCount}
+                />
             </div>
         </div >
     );

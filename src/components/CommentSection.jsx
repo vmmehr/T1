@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useComment } from '../context/CommentContext';
 import styles from './CommentSection.module.css';
@@ -10,13 +10,18 @@ const CommentSection = ({
     targetItemId = null,
     section = 'general',
     compact = false,
-    forcePublic = false
+    forcePublic = false,
+    newCount = null
 }) => {
     const { currentUser } = useAuth();
-    const { getComments, addComment } = useComment();
+    const { getComments, addComment, markTaskCommentsRead, markItemCommentsRead, getThreadSeenCount, markThreadSeen } = useComment();
     const [newComment, setNewComment] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const markReadKeyRef = useRef('');
+    const isTaskThread = section === 'task' && Boolean(targetItemId);
+    const isDecisionItemThread = section !== 'task' && Boolean(targetItemId);
+    const hasExplicitUnreadCount = typeof newCount === 'number';
 
     const defaultVisibility = forcePublic
         ? 'public'
@@ -24,10 +29,43 @@ const CommentSection = ({
     const [visibility, setVisibility] = useState(defaultVisibility);
     const [isExpanded, setIsExpanded] = useState(!compact);
     const visibilityGroupName = `visibility-${decisionId}-${section}-${targetItemId || 'main'}`;
+    const threadKey = `${currentUser?.id || 'anonymous'}-${decisionId}-${section}-${targetItemId || 'main'}`;
 
     useEffect(() => {
         setVisibility(defaultVisibility);
     }, [defaultVisibility]);
+
+    useEffect(() => {
+        if (!isExpanded || newCount <= 0) return;
+
+        const shouldMarkTask = isTaskThread;
+        const shouldMarkDecisionItem = isDecisionItemThread && hasExplicitUnreadCount;
+        if (!shouldMarkTask && !shouldMarkDecisionItem) return;
+
+        const currentKey = `${decisionId}-${section}-${targetItemId}-${newCount}`;
+        if (markReadKeyRef.current === currentKey) return;
+        markReadKeyRef.current = currentKey;
+        if (shouldMarkTask) {
+            markTaskCommentsRead(decisionId, targetItemId).catch((error) => {
+                console.error('Error marking task comments as read:', error);
+            });
+            return;
+        }
+        markItemCommentsRead(decisionId, targetItemId).catch((error) => {
+            console.error('Error marking decision item comments as read:', error);
+        });
+    }, [
+        decisionId,
+        targetItemId,
+        section,
+        newCount,
+        isTaskThread,
+        isDecisionItemThread,
+        hasExplicitUnreadCount,
+        isExpanded,
+        markTaskCommentsRead,
+        markItemCommentsRead
+    ]);
 
     const allComments = getComments(decisionId);
 
@@ -50,25 +88,39 @@ const CommentSection = ({
         }
         return true;
     });
+    const seenCount = hasExplicitUnreadCount ? 0 : getThreadSeenCount(threadKey);
 
-    if (compact && !isExpanded && visibleComments.length === 0) {
-        return (
-            <button
-                onClick={() => setIsExpanded(true)}
-                className={styles.expandButton}
-            >
-                افزودن یادداشت
-            </button>
-        );
-    }
+    useEffect(() => {
+        if (hasExplicitUnreadCount) return;
+        if (seenCount === undefined) {
+            markThreadSeen(threadKey, visibleComments.length);
+            return;
+        }
+        if (!isExpanded || seenCount === visibleComments.length) return;
+        markThreadSeen(threadKey, visibleComments.length);
+    }, [hasExplicitUnreadCount, isExpanded, seenCount, markThreadSeen, threadKey, visibleComments.length]);
+
+    const inlineUnreadCount = hasExplicitUnreadCount
+        ? Math.max(Number(newCount) || 0, 0)
+        : (seenCount === undefined ? 0 : Math.max(visibleComments.length - seenCount, 0));
+    const shouldShowInlineBubble = !isTaskThread && inlineUnreadCount > 0;
 
     if (compact && !isExpanded) {
+        const buttonLabel = visibleComments.length === 0 ? 'افزودن یادداشت' : `${visibleComments.length} یادداشت`;
         return (
             <button
                 onClick={() => setIsExpanded(true)}
-                className={`${styles.expandButton} ${styles.expandButtonWithCount}`}
+                className={`${styles.expandButton} ${visibleComments.length > 0 ? styles.expandButtonWithCount : ''}`}
             >
-                💬 {visibleComments.length} یادداشت
+                <span className={styles.expandButtonIconWrap}>
+                    <span>💬</span>
+                    {shouldShowInlineBubble && (
+                        <span className={styles.expandButtonUnreadBubble}>
+                            {inlineUnreadCount}
+                        </span>
+                    )}
+                </span>
+                {buttonLabel}
             </button>
         );
     }
@@ -106,6 +158,11 @@ const CommentSection = ({
                 <h4 className={styles.title}>
                     {sectionTitle}
                 </h4>
+                {shouldShowInlineBubble && !compact && (
+                    <span className={styles.titleUnreadBubble}>
+                        {inlineUnreadCount}
+                    </span>
+                )}
                 {compact && (
                     <button
                         onClick={() => setIsExpanded(false)}

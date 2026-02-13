@@ -86,11 +86,17 @@ export const TaskProvider = ({ children }) => {
     return decisionItems[decisionId]?.tasks || [];
   };
 
+  const getTaskUnreadCount = (decisionId, taskId) => {
+    const taskUnreadCounts = decisionItems[decisionId]?.taskUnreadCounts || {};
+    return Number(taskUnreadCounts?.[taskId] || 0);
+  };
+
   const value = {
     addTask,
     updateTask,
     deleteTask,
-    getTasks
+    getTasks,
+    getTaskUnreadCount
   };
 
   return (

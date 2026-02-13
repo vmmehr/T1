@@ -69,6 +69,7 @@ export const api = {
   profiles: {
     getAllConsultants: () => request('/api/profiles/consultants', { auth: false }),
     getMyClients: () => request('/api/profiles/me/clients'),
+    markClientCommentsRead: (clientId) => request(`/api/profiles/me/clients/${clientId}/comments/read`, { method: 'POST' }),
     getMyAssignments: () => request('/api/profiles/me/assignments'),
     getClientsForConsultant: (consultantId) => request(`/api/profiles/${consultantId}/clients`),
     assignClientToConsultant: (clientId, consultantId) =>
@@ -86,6 +87,7 @@ export const api = {
     update: (id, updates) => request(`/api/decisions/${id}`, { method: 'PATCH', body: updates }),
     delete: (id) => request(`/api/decisions/${id}`, { method: 'DELETE' }),
     details: (id) => request(`/api/decisions/${id}/details`),
+    markStepRead: (id, stepScope) => request(`/api/decisions/${id}/steps/${stepScope}/read`, { method: 'POST' }),
     archive: (params = {}) => request(`/api/decisions/archive${buildQueryString(params)}`),
     stats: (params = {}) => request(`/api/decisions/stats${buildQueryString(params)}`),
   },
@@ -101,5 +103,7 @@ export const api = {
   },
   comments: {
     create: (data) => request('/api/comments', { method: 'POST', body: data }),
+    markTaskRead: (taskId) => request(`/api/tasks/${taskId}/comments/read`, { method: 'POST' }),
+    markDecisionItemRead: (itemId) => request(`/api/decision-items/${itemId}/comments/read`, { method: 'POST' }),
   },
 };
