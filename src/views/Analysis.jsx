@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useDecision } from '../context/DecisionContext';
 import CommentSection from '../components/CommentSection';
 
-const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, decisionId }) => {
+const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, decisionId, readOnly }) => {
     const [newItem, setNewItem] = useState('');
     const [newWeight, setNewWeight] = useState(50);
 
     const handleAdd = (e) => {
         e.preventDefault();
+        if (readOnly) return;
         if (newItem.trim()) {
             onItemAdd(newItem, newWeight);
             setNewItem('');
@@ -35,6 +36,7 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
                             <button
                                 onClick={() => onItemRemove(item.id)}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                disabled={readOnly}
                             >
                                 ✕
                             </button>
@@ -47,6 +49,7 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
                                 value={item.weight}
                                 onChange={(e) => onItemUpdate(item.id, parseInt(e.target.value))}
                                 style={{ flex: 1, accentColor: color }}
+                                disabled={readOnly}
                             />
                             <span style={{ fontWeight: 'bold', color: color, minWidth: '30px', textAlign: 'center' }}>
                                 {item.weight}
@@ -71,6 +74,7 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
                     onChange={(e) => setNewItem(e.target.value)}
                     placeholder="مورد جدید..."
                     style={{ marginBottom: '0.5rem' }}
+                    disabled={readOnly}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>اهمیت:</span>
@@ -81,10 +85,11 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
                         value={newWeight}
                         onChange={(e) => setNewWeight(parseInt(e.target.value))}
                         style={{ flex: 1, accentColor: color }}
+                        disabled={readOnly}
                     />
                     <span style={{ fontWeight: 'bold', color: color }}>{newWeight}</span>
                 </div>
-                <button type="submit" className="btn" style={{ width: '100%', background: color, color: 'white' }}>
+                <button type="submit" className="btn" style={{ width: '100%', background: color, color: 'white' }} disabled={readOnly}>
                     افزودن
                 </button>
             </form>
@@ -93,7 +98,7 @@ const ItemList = ({ title, items, onItemAdd, onItemUpdate, onItemRemove, color, 
 };
 
 const Analysis = () => {
-    const { currentDecision, addPro, addCon, updateItemWeight, removeItem, setStep } = useDecision();
+    const { currentDecision, addPro, addCon, updateItemWeight, removeItem, setStep, setViewStep, isReadOnlyView } = useDecision();
 
     const totalPros = currentDecision.pros.reduce((acc, curr) => acc + curr.weight, 0);
     const totalCons = currentDecision.cons.reduce((acc, curr) => acc + curr.weight, 0);
@@ -119,6 +124,7 @@ const Analysis = () => {
                     onItemRemove={(id) => removeItem('pros', id)}
                     color="#10b981" // Emerald 500
                     decisionId={currentDecision.id}
+                    readOnly={isReadOnlyView}
                 />
                 <ItemList
                     title="معایب (Cons)"
@@ -128,6 +134,7 @@ const Analysis = () => {
                     onItemRemove={(id) => removeItem('cons', id)}
                     color="#ef4444" // Red 500
                     decisionId={currentDecision.id}
+                    readOnly={isReadOnlyView}
                 />
             </div>
 
@@ -142,7 +149,7 @@ const Analysis = () => {
                         {score > 0 ? 'مثبت (+)' : score < 0 ? 'منفی (-)' : 'خنثی'} {Math.abs(score)}
                     </span>
                 </div>
-                <button onClick={() => setStep(2)} className="btn btn-primary">
+                <button onClick={() => (isReadOnlyView ? setViewStep(2) : setStep(2))} className="btn btn-primary">
                     مرحله بعد: بهینه‌سازی و استراتژی
                     <span style={{ marginRight: '0.5rem' }}>←</span>
                 </button>

@@ -140,3 +140,8 @@
   color: var(--color-text-muted);
 }
 
+.submitError {
+  margin-top: 0.5rem;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}

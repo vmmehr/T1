@@ -30,9 +30,11 @@ services:
       - sh
       - -c
       - |
-        psql postgresql://decision_app:decision_app@db:5432/decision_app -v ON_ERROR_STOP=1 -f /migrations/add_decision_archive_metrics.sql
+        psql postgresql://decision_app:decision_app@db:5432/decision_app -v ON_ERROR_STOP=1 -f /migrations/add_decision_archive_metrics.sql && \
+        psql postgresql://decision_app:decision_app@db:5432/decision_app -v ON_ERROR_STOP=1 -f /migrations/add_staff_hierarchy_and_comment_visibility.sql
     volumes:
       - ./db/migrations/add_decision_archive_metrics.sql:/migrations/add_decision_archive_metrics.sql:ro
+      - ./db/migrations/add_staff_hierarchy_and_comment_visibility.sql:/migrations/add_staff_hierarchy_and_comment_visibility.sql:ro
     restart: "no"
 
   api:

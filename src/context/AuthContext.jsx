@@ -62,27 +62,28 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(null);
     }, []);
 
-    const assignClientToConsultant = useCallback(async (clientId, consultantId) => {
-        await api.profiles.assignClientToConsultant(clientId, consultantId);
-
-        // Update local state if it's the current user
-        setCurrentUser(prev => {
-            if (!prev || prev.id !== clientId) return prev;
-            return { ...prev, consultant_id: consultantId };
-        });
-    }, []);
-
-    const getClientsForConsultant = useCallback(async (consultantId) => {
-        return api.profiles.getClientsForConsultant(consultantId);
+    const getMyClients = useCallback(async () => {
+        return api.profiles.getMyClients();
     }, []);
 
     const getAllConsultants = useCallback(async () => {
         return api.profiles.getAllConsultants();
     }, []);
 
-    // Helper to get all users (for supervisor)
     const getAllUsers = useCallback(async () => {
         return api.profiles.getAllUsers();
+    }, []);
+
+    const getMyAssignments = useCallback(async () => {
+        return api.profiles.getMyAssignments();
+    }, []);
+
+    const createUserByAdmin = useCallback(async (data) => {
+        return api.admin.createUser(data);
+    }, []);
+
+    const updateClientAssignmentsByAdmin = useCallback(async (clientId, data) => {
+        return api.admin.updateClientAssignments(clientId, data);
     }, []);
 
     const value = useMemo(() => ({
@@ -90,19 +91,23 @@ export const AuthProvider = ({ children }) => {
         signup,
         login,
         logout,
-        assignClientToConsultant,
-        getClientsForConsultant,
+        getMyClients,
         getAllConsultants,
-        getAllUsers
+        getAllUsers,
+        getMyAssignments,
+        createUserByAdmin,
+        updateClientAssignmentsByAdmin
     }), [
         currentUser,
         signup,
         login,
         logout,
-        assignClientToConsultant,
-        getClientsForConsultant,
+        getMyClients,
         getAllConsultants,
-        getAllUsers
+        getAllUsers,
+        getMyAssignments,
+        createUserByAdmin,
+        updateClientAssignmentsByAdmin
     ]);
 
     return (

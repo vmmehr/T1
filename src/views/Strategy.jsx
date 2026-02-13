@@ -4,7 +4,7 @@ import { useTask } from '../context/TaskContext';
 import CommentSection from '../components/CommentSection';
 import styles from './Strategy.module.css';
 
-const StrategyItem = ({ item, type }) => {
+const StrategyItem = ({ item, type, readOnly }) => {
     const isPro = type === 'pros';
     const color = isPro ? '#10b981' : '#ef4444';
     const question = isPro ? 'چگونه می‌توانیم این مورد را تقویت کنیم؟' : 'چگونه می‌توانیم این مورد را کاهش دهیم یا حذف کنیم؟';
@@ -15,11 +15,16 @@ const StrategyItem = ({ item, type }) => {
     // Get tasks for this specific item
     const tasks = getTasks(item.decision_id).filter(t => t.decision_item_id === item.id);
 
-    const handleAddTask = (e) => {
+    const handleAddTask = async (e) => {
         e.preventDefault();
+        if (readOnly) return;
         if (newTaskText.trim()) {
-            addTask(item.id, newTaskText);
-            setNewTaskText('');
+            try {
+                await addTask(item.id, newTaskText);
+                setNewTaskText('');
+            } catch (error) {
+                console.error('Error adding task:', error);
+            }
         }
     };
 
@@ -61,6 +66,7 @@ const StrategyItem = ({ item, type }) => {
                                         padding: 0
                                     }}
                                     title="حذف"
+                                    disabled={readOnly || !task.created_at}
                                 >
                                     ×
                                 </button>
@@ -68,12 +74,18 @@ const StrategyItem = ({ item, type }) => {
 
                             {/* Granular Comments for this Task */}
                             <div style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem' }}>
-                                <CommentSection
-                                    decisionId={item.decision_id}
-                                    targetItemId={task.id}
-                                    section="task"
-                                    compact={true}
-                                />
+                                {task.created_at ? (
+                                    <CommentSection
+                                        decisionId={item.decision_id}
+                                        targetItemId={task.id}
+                                        section="task"
+                                        compact={true}
+                                    />
+                                ) : (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                        در حال ذخیره راهکار...
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -93,8 +105,9 @@ const StrategyItem = ({ item, type }) => {
                         onChange={(e) => setNewTaskText(e.target.value)}
                         placeholder="راهکار جدید..."
                         style={{ flex: 1, fontSize: '0.9rem' }}
+                        disabled={readOnly}
                     />
-                    <button type="submit" className="btn btn-sm btn-primary" disabled={!newTaskText.trim()}>
+                    <button type="submit" className="btn btn-sm btn-primary" disabled={readOnly || !newTaskText.trim()}>
                         +
                     </button>
                 </form>
@@ -104,7 +117,7 @@ const StrategyItem = ({ item, type }) => {
 };
 
 const Strategy = () => {
-    const { currentDecision, setStep } = useDecision();
+    const { currentDecision, setStep, setViewStep, isReadOnlyView } = useDecision();
 
     // Sort items by weight (descending) to focus on most important ones first
     const sortedPros = [...currentDecision.pros].sort((a, b) => b.weight - a.weight);
@@ -127,6 +140,7 @@ const Strategy = () => {
                             key={item.id}
                             item={item}
                             type="pros"
+                            readOnly={isReadOnlyView}
                         />
                     ))}
                     {sortedPros.length === 0 && <p className={styles.emptyState}>موردی ثبت نشده است.</p>}
@@ -139,6 +153,7 @@ const Strategy = () => {
                             key={item.id}
                             item={item}
                             type="cons"
+                            readOnly={isReadOnlyView}
                         />
                     ))}
                     {sortedCons.length === 0 && <p className={styles.emptyState}>موردی ثبت نشده است.</p>}
@@ -146,7 +161,7 @@ const Strategy = () => {
             </div>
 
             <div className={styles.footer}>
-                <button onClick={() => setStep(3)} className="btn btn-primary">
+                <button onClick={() => (isReadOnlyView ? setViewStep(3) : setStep(3))} className="btn btn-primary">
                     مشاهده برنامه عملیاتی
                     <span style={{ marginRight: '0.5rem' }}>←</span>
                 </button>

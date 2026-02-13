@@ -26,6 +26,20 @@ export const CommentProvider = ({ children }) => {
     if (!currentUser) return;
 
     const isTaskComment = section === 'task';
+    if (isTaskComment) {
+      const tasks = decisionItems[decisionId]?.tasks || [];
+      const task = tasks.find((item) => item.id === targetItemId);
+
+      if (!task) {
+        await fetchItems(decisionId);
+        throw new Error('Task context is stale. Please try again.');
+      }
+
+      if (!task.created_at) {
+        throw new Error('Task is still being saved. Please retry in a second.');
+      }
+    }
+
     const normalizedSection = isTaskComment ? 'strategy' : (section || 'general');
     const normalizedTargetItemId = isTaskComment ? null : targetItemId;
     const normalizedTaskId = isTaskComment ? targetItemId : null;

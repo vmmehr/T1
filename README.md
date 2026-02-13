@@ -35,7 +35,9 @@ docker compose up -d --build db db-migrate api
 
 What this does:
 - `db`: starts PostgreSQL
-- `db-migrate`: applies `db/migrations/add_decision_archive_metrics.sql`
+- `db-migrate`: applies:
+  - `db/migrations/add_decision_archive_metrics.sql`
+  - `db/migrations/add_staff_hierarchy_and_comment_visibility.sql`
 - `api`: runs `server/index.js` against Docker DB
 
 Check status:
@@ -71,14 +73,16 @@ docker compose down -v
 docker compose up -d db
 ```
 
-### Applying New Decision Archive Migration (Existing DB)
+### Applying Migrations Manually (Existing DB)
 
 If your database is already running with older schema, apply:
-`db/migrations/add_decision_archive_metrics.sql`
+- `db/migrations/add_decision_archive_metrics.sql`
+- `db/migrations/add_staff_hierarchy_and_comment_visibility.sql`
 
 Example:
 ```bash
 docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_decision_archive_metrics.sql
+docker compose exec -T db psql -U decision_app -d decision_app < db/migrations/add_staff_hierarchy_and_comment_visibility.sql
 ```
 
 ## Optional Dev Staff Accounts

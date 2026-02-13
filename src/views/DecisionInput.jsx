@@ -4,12 +4,13 @@ import CommentSection from '../components/CommentSection';
 import styles from './DecisionInput.module.css';
 
 const DecisionInput = () => {
-    const { currentDecision, updateDecisionInfo } = useDecision();
+    const { currentDecision, updateDecisionInfo, isReadOnlyView } = useDecision();
     const [title, setTitle] = useState(currentDecision?.title || '');
     const [description, setDescription] = useState(currentDecision?.description || '');
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (isReadOnlyView) return;
         if (title.trim()) {
             updateDecisionInfo(title, description);
         }
@@ -33,6 +34,7 @@ const DecisionInput = () => {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="مثلاً: مهاجرت به شهر جدید"
+                        disabled={isReadOnlyView}
                         required
                     />
                 </div>
@@ -47,11 +49,12 @@ const DecisionInput = () => {
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="جزئیات بیشتر در مورد شرایط و محدودیت‌ها..."
                         rows={4}
+                        disabled={isReadOnlyView}
                     />
                 </div>
 
                 <div className={styles.formActions}>
-                    <button type="submit" className="btn btn-primary" style={{ minWidth: '200px' }}>
+                    <button type="submit" className="btn btn-primary" style={{ minWidth: '200px' }} disabled={isReadOnlyView}>
                         شروع تحلیل
                         <span style={{ marginRight: '0.5rem' }}>←</span>
                     </button>

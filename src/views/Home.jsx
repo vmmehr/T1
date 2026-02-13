@@ -144,9 +144,11 @@ const Home = () => {
             {activeDecisions.length === 0 ? (
                 <div className={`glass-panel ${styles.emptyState}`}>
                     <p>فعلاً تصمیم فعالی ندارید.</p>
-                    <button onClick={() => setShowNewForm(true)} className={`btn btn-primary ${styles.emptyStateButton}`}>
-                        تصمیم جدید ثبت کنید
-                    </button>
+                    {!viewingUserId && (
+                        <button onClick={() => setShowNewForm(true)} className={`btn btn-primary ${styles.emptyStateButton}`}>
+                            تصمیم جدید ثبت کنید
+                        </button>
+                    )}
                 </div>
             ) : (
                 <div className={styles.decisionsList}>
@@ -184,12 +186,14 @@ const Home = () => {
                                     <button onClick={() => openDecisionFlow(decision.id)} className={`btn btn-primary ${styles.actionButton}`}>
                                         مشاهده / ادامه
                                     </button>
-                                    <button
-                                        onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
-                                        className={`btn ${styles.actionButton} ${styles.deleteButton}`}
-                                    >
-                                        حذف
-                                    </button>
+                                    {!viewingUserId && (
+                                        <button
+                                            onClick={() => { if (window.confirm('آیا از حذف این مورد اطمینان دارید؟')) deleteDecision(decision.id) }}
+                                            className={`btn ${styles.actionButton} ${styles.deleteButton}`}
+                                        >
+                                            حذف
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         );

@@ -8,7 +8,8 @@ create table if not exists profiles (
   password_hash text not null,
   full_name text not null,
   role text not null default 'client' check (role in ('client', 'consultant', 'supervisor', 'psychologist')),
-  consultant_id uuid references profiles(id)
+  consultant_id uuid references profiles(id),
+  psychologist_id uuid references profiles(id)
 );
 
 create table if not exists decisions (
@@ -78,11 +79,12 @@ create table if not exists comments (
   target_item_id bigint references decision_items(id) on delete cascade,
   task_id bigint references tasks(id) on delete cascade,
   section text not null default 'general',
-  visibility text not null default 'public' check (visibility in ('public', 'internal')),
+  visibility text not null default 'public' check (visibility in ('public', 'staff_private', 'psychologist_private')),
   created_at timestamptz not null default now()
 );
 
 create index if not exists idx_profiles_consultant_id on profiles(consultant_id);
+create index if not exists idx_profiles_psychologist_id on profiles(psychologist_id);
 create index if not exists idx_decisions_user_id on decisions(user_id);
 create index if not exists idx_decisions_status on decisions(status);
 create index if not exists idx_decisions_finalized_at on decisions(finalized_at);

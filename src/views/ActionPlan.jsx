@@ -4,7 +4,7 @@ import { useTask } from '../context/TaskContext';
 import styles from './ActionPlan.module.css';
 
 const ActionPlan = () => {
-    const { currentDecision, goHome, setStep } = useDecision();
+    const { currentDecision, goHome, setStep, setViewStep, isReadOnlyView } = useDecision();
     const { getTasks, updateTask } = useTask();
 
     // Get all tasks associated with current decision
@@ -38,6 +38,7 @@ const ActionPlan = () => {
     });
 
     const handleToggleComplete = (id, currentStatus) => {
+        if (isReadOnlyView) return;
         updateTask(id, { is_completed: !currentStatus });
     };
 
@@ -66,9 +67,6 @@ const ActionPlan = () => {
                 {allActions.length === 0 ? (
                     <div className={styles.emptyState}>
                         <p>هیچ راهکار عملیاتی ثبت نشده است.</p>
-                        <button onClick={() => setStep(2)} className="btn btn-primary" style={{ marginTop: '1rem' }}>
-                            بازگشت به مرحله قبل
-                        </button>
                     </div>
                 ) : (
                     <ul className={styles.actionsList}>
@@ -81,6 +79,7 @@ const ActionPlan = () => {
                                     checked={!!item.is_completed}
                                     onChange={() => handleToggleComplete(item.id, item.is_completed)}
                                     style={{ marginTop: '0.3rem', width: '20px', height: '20px', cursor: 'pointer' }}
+                                    disabled={isReadOnlyView}
                                 />
                                 <div className={styles.actionContent} style={{ opacity: item.is_completed ? 0.5 : 1, textDecoration: item.is_completed ? 'line-through' : 'none' }}>
                                     <div className={styles.actionTitle}>
@@ -93,6 +92,12 @@ const ActionPlan = () => {
                             </li>
                         ))}
                     </ul>
+                )}
+
+                {allActions.length === 0 && (
+                    <button onClick={() => (isReadOnlyView ? setViewStep(2) : setStep(2))} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                        بازگشت به مرحله قبل
+                    </button>
                 )}
 
                 <div className={styles.footer}>

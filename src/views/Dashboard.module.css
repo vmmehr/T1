@@ -53,3 +53,41 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.adminSection {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-surface);
+}
+
+.adminForm {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
+.assignmentLabel {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.assignmentActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.errorText {
+  color: #dc2626;
+  margin-top: 0.75rem;
+}
+
+.successText {
+  color: #15803d;
+  margin-top: 0.75rem;
+}

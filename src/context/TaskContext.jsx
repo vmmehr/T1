@@ -14,7 +14,7 @@ export const useTask = () => {
 };
 
 export const TaskProvider = ({ children }) => {
-  const { currentDecisionId, decisionItems, setDecisionItems, fetchItems } = useDecision();
+  const { currentDecisionId, decisionItems, setDecisionItems, fetchItems, isReadOnlyView } = useDecision();
 
   const optimisticUpdate = useOptimisticUpdate(
     setDecisionItems,
@@ -22,7 +22,7 @@ export const TaskProvider = ({ children }) => {
   );
 
   const addTask = async (decisionItemId, content) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     const newTask = {
       decision_item_id: decisionItemId,
@@ -46,7 +46,7 @@ export const TaskProvider = ({ children }) => {
   };
 
   const updateTask = async (taskId, updates) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     return optimisticUpdate.optimisticUpdate(
       currentDecisionId,
@@ -65,7 +65,7 @@ export const TaskProvider = ({ children }) => {
   };
 
   const deleteTask = async (taskId) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     return optimisticUpdate.optimisticDelete(
       currentDecisionId,

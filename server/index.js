@@ -30,10 +30,13 @@ app.use(express.json());
 const asyncHandler = (handler) => (req, res, next) =>
   Promise.resolve(handler(req, res, next)).catch(next);
 
-const isPrivileged = (role) => role === 'psychologist' || role === 'supervisor';
-const isStaff = (role) => role === 'consultant' || isPrivileged(role);
+const isSupervisor = (role) => role === 'supervisor';
+const isConsultant = (role) => role === 'consultant';
+const isPsychologist = (role) => role === 'psychologist';
+const isStaff = (role) => isConsultant(role) || isPsychologist(role) || isSupervisor(role);
 const VALID_DECISION_STATUS = new Set(['pending', 'success', 'fail']);
 const FINAL_DECISION_STATUSES = new Set(['success', 'fail']);
+const COMMENT_VISIBILITY_VALUES = new Set(['public', 'staff_private', 'psychologist_private']);
 
 const publicUser = (user) => ({
   id: user.id,
@@ -41,6 +44,7 @@ const publicUser = (user) => ({
   full_name: user.full_name,
   role: user.role,
   consultant_id: user.consultant_id,
+  psychologist_id: user.psychologist_id,
 });
 
 const signToken = (user) =>
@@ -101,7 +105,7 @@ const calculateWilsonInterval = (successCount, totalCount, z = 1.96) => {
 
 const getUserById = async (userId) => {
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id
+    `select id, username, full_name, role, consultant_id, psychologist_id
      from profiles
      where id = $1`,
     [userId],
@@ -132,7 +136,7 @@ const authRequired = asyncHandler(async (req, res, next) => {
 
 const getDecisionMeta = async (decisionId) => {
   const { rows } = await pool.query(
-    `select d.id, d.user_id, owner.consultant_id
+    `select d.id, d.user_id, owner.consultant_id, owner.psychologist_id
      from decisions d
      join profiles owner on owner.id = d.user_id
      where d.id = $1`,
@@ -144,8 +148,10 @@ const getDecisionMeta = async (decisionId) => {
 const canAccessDecision = (actor, decisionMeta) => {
   if (!decisionMeta) return false;
   if (actor.id === decisionMeta.user_id) return true;
-  if (isPrivileged(actor.role)) return true;
-  return actor.role === 'consultant' && decisionMeta.consultant_id === actor.id;
+  if (isSupervisor(actor.role)) return true;
+  if (isConsultant(actor.role)) return decisionMeta.consultant_id === actor.id;
+  if (isPsychologist(actor.role)) return decisionMeta.psychologist_id === actor.id;
+  return false;
 };
 
 const canManageDecision = (actor, decisionMeta) => actor.id === decisionMeta?.user_id;
@@ -160,13 +166,45 @@ const consultantOwnsClient = async (consultantId, clientId) => {
   return rows.length > 0;
 };
 
+const psychologistOwnsClient = async (psychologistId, clientId) => {
+  const { rows } = await pool.query(
+    `select 1
+     from profiles
+     where id = $1 and role = 'client' and psychologist_id = $2`,
+    [clientId, psychologistId],
+  );
+  return rows.length > 0;
+};
+
 const canAccessTargetUserScope = async (actor, targetUserId) => {
   if (targetUserId === actor.id) return true;
-  if (isPrivileged(actor.role)) return true;
-  if (actor.role === 'consultant') {
+  if (isSupervisor(actor.role)) return true;
+  if (isConsultant(actor.role)) {
     return consultantOwnsClient(actor.id, targetUserId);
   }
+  if (isPsychologist(actor.role)) {
+    return psychologistOwnsClient(actor.id, targetUserId);
+  }
   return false;
+};
+
+const normalizeVisibilityInput = (value) => (value === 'internal' ? 'staff_private' : value);
+const isCommentVisibilityConstraintError = (error) => {
+  if (!error || error.code !== '23514') return false;
+  const details = `${error.constraint || ''} ${error.message || ''}`.toLowerCase();
+  return details.includes('visibility');
+};
+
+const getReadableCommentVisibilities = (actor, decisionMeta) => {
+  if (actor.id === decisionMeta.user_id) return ['public'];
+  if (isSupervisor(actor.role)) return ['public', 'staff_private', 'psychologist_private'];
+  if (isPsychologist(actor.role) && actor.id === decisionMeta.psychologist_id) {
+    return ['public', 'staff_private', 'psychologist_private'];
+  }
+  if (isConsultant(actor.role) && actor.id === decisionMeta.consultant_id) {
+    return ['public', 'staff_private'];
+  }
+  return ['public'];
 };
 
 const getDecisionByIdForUpdate = async (client, decisionId) => {
@@ -308,7 +346,7 @@ const updateDecisionWithOutcomeEvent = async ({
 
 const getDecisionItemMeta = async (itemId) => {
   const { rows } = await pool.query(
-    `select di.id, di.decision_id, d.user_id, owner.consultant_id
+    `select di.id, di.decision_id, d.user_id, owner.consultant_id, owner.psychologist_id
      from decision_items di
      join decisions d on d.id = di.decision_id
      join profiles owner on owner.id = d.user_id
@@ -320,7 +358,7 @@ const getDecisionItemMeta = async (itemId) => {
 
 const getTaskMeta = async (taskId) => {
   const { rows } = await pool.query(
-    `select t.id, di.decision_id, d.user_id, owner.consultant_id
+    `select t.id, di.decision_id, d.user_id, owner.consultant_id, owner.psychologist_id
      from tasks t
      join decision_items di on di.id = t.decision_item_id
      join decisions d on d.id = di.decision_id
@@ -358,30 +396,20 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.post('/api/auth/signup', asyncHandler(async (req, res) => {
-  const { username, password, fullName, consultantId } = req.body;
+  const { username, password, fullName } = req.body;
 
   if (!username || !password || !fullName) {
     return res.status(400).json({ error: 'username, password, and fullName are required' });
-  }
-
-  if (consultantId) {
-    const { rows: consultantRows } = await pool.query(
-      `select id from profiles where id = $1 and role = 'consultant'`,
-      [consultantId],
-    );
-    if (consultantRows.length === 0) {
-      return res.status(400).json({ error: 'Invalid consultantId' });
-    }
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
     const { rows } = await pool.query(
-      `insert into profiles (username, password_hash, full_name, role, consultant_id)
-       values ($1, $2, $3, 'client', $4)
-       returning id, username, full_name, role, consultant_id`,
-      [username, hashedPassword, fullName, consultantId || null],
+      `insert into profiles (username, password_hash, full_name, role)
+       values ($1, $2, $3, 'client')
+       returning id, username, full_name, role, consultant_id, psychologist_id`,
+      [username, hashedPassword, fullName],
     );
 
     const user = rows[0];
@@ -402,7 +430,7 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id, password_hash
+    `select id, username, full_name, role, consultant_id, psychologist_id, password_hash
      from profiles
      where username = $1`,
     [username],
@@ -428,7 +456,7 @@ app.get('/api/auth/me', authRequired, (req, res) => {
 
 app.get('/api/profiles/consultants', asyncHandler(async (_req, res) => {
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id
+    `select id, username, full_name, role, consultant_id, psychologist_id
      from profiles
      where role = 'consultant'
      order by full_name asc nulls last, username asc`,
@@ -436,21 +464,83 @@ app.get('/api/profiles/consultants', asyncHandler(async (_req, res) => {
   res.json(rows);
 }));
 
+app.get('/api/profiles/me/clients', authRequired, asyncHandler(async (req, res) => {
+  if (!isConsultant(req.user.role) && !isPsychologist(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const assignmentColumn = isConsultant(req.user.role) ? 'consultant_id' : 'psychologist_id';
+  const { rows } = await pool.query(
+    `select id, username, full_name, role, consultant_id, psychologist_id
+     from profiles
+     where role = 'client' and ${assignmentColumn} = $1
+     order by full_name asc nulls last, username asc`,
+    [req.user.id],
+  );
+  return res.json(rows);
+}));
+
 app.get('/api/profiles/:consultantId/clients', authRequired, asyncHandler(async (req, res) => {
   const { consultantId } = req.params;
 
-  if (!isPrivileged(req.user.role) && !(req.user.role === 'consultant' && req.user.id === consultantId)) {
+  if (!isSupervisor(req.user.role) && !(isConsultant(req.user.role) && req.user.id === consultantId)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id
+    `select id, username, full_name, role, consultant_id, psychologist_id
      from profiles
      where role = 'client' and consultant_id = $1
      order by full_name asc nulls last, username asc`,
     [consultantId],
   );
   return res.json(rows);
+}));
+
+app.get('/api/profiles/me/assignments', authRequired, asyncHandler(async (req, res) => {
+  if (req.user.role !== 'client') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { rows } = await pool.query(
+    `select
+       client.id,
+       client.consultant_id,
+       client.psychologist_id,
+       cons.id as consultant_profile_id,
+       cons.username as consultant_username,
+       cons.full_name as consultant_full_name,
+       psych.id as psychologist_profile_id,
+       psych.username as psychologist_username,
+       psych.full_name as psychologist_full_name
+     from profiles client
+     left join profiles cons on cons.id = client.consultant_id
+     left join profiles psych on psych.id = client.psychologist_id
+     where client.id = $1 and client.role = 'client'`,
+    [req.user.id],
+  );
+
+  if (rows.length === 0) {
+    return res.status(404).json({ error: 'Client not found' });
+  }
+
+  const row = rows[0];
+  return res.json({
+    consultant: row.consultant_profile_id
+      ? {
+        id: row.consultant_profile_id,
+        username: row.consultant_username,
+        full_name: row.consultant_full_name,
+      }
+      : null,
+    psychologist: row.psychologist_profile_id
+      ? {
+        id: row.psychologist_profile_id,
+        username: row.psychologist_username,
+        full_name: row.psychologist_full_name,
+      }
+      : null,
+  });
 }));
 
 app.patch('/api/profiles/:clientId/consultant', authRequired, asyncHandler(async (req, res) => {
@@ -461,8 +551,7 @@ app.patch('/api/profiles/:clientId/consultant', authRequired, asyncHandler(async
     return res.status(400).json({ error: 'consultantId is required' });
   }
 
-  const isSelfClientUpdate = req.user.role === 'client' && req.user.id === clientId;
-  if (!isSelfClientUpdate && !isPrivileged(req.user.role)) {
+  if (!isSupervisor(req.user.role)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -478,7 +567,7 @@ app.patch('/api/profiles/:clientId/consultant', authRequired, asyncHandler(async
     `update profiles
      set consultant_id = $1
      where id = $2 and role = 'client'
-     returning id, username, full_name, role, consultant_id`,
+     returning id, username, full_name, role, consultant_id, psychologist_id`,
     [consultantId, clientId],
   );
 
@@ -490,16 +579,119 @@ app.patch('/api/profiles/:clientId/consultant', authRequired, asyncHandler(async
 }));
 
 app.get('/api/profiles/users', authRequired, asyncHandler(async (req, res) => {
-  if (!isPrivileged(req.user.role)) {
+  if (!isSupervisor(req.user.role)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   const { rows } = await pool.query(
-    `select id, username, full_name, role, consultant_id
+    `select id, username, full_name, role, consultant_id, psychologist_id
      from profiles
      order by created_at desc`,
   );
   return res.json(rows);
+}));
+
+app.post('/api/admin/users', authRequired, asyncHandler(async (req, res) => {
+  if (!isSupervisor(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { username, password, fullName, role } = req.body;
+  const allowedRoles = new Set(['client', 'consultant', 'psychologist']);
+
+  if (!username || !password || !fullName || !role) {
+    return res.status(400).json({ error: 'username, password, fullName, and role are required' });
+  }
+  if (!allowedRoles.has(role)) {
+    return res.status(400).json({ error: 'Invalid role value' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  try {
+    const { rows } = await pool.query(
+      `insert into profiles (username, password_hash, full_name, role)
+       values ($1, $2, $3, $4)
+       returning id, username, full_name, role, consultant_id, psychologist_id`,
+      [username, hashedPassword, fullName, role],
+    );
+    return res.status(201).json(publicUser(rows[0]));
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    throw error;
+  }
+}));
+
+app.patch('/api/admin/clients/:clientId/assignments', authRequired, asyncHandler(async (req, res) => {
+  if (!isSupervisor(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { clientId } = req.params;
+  const hasConsultant = Object.prototype.hasOwnProperty.call(req.body, 'consultantId');
+  const hasPsychologist = Object.prototype.hasOwnProperty.call(req.body, 'psychologistId');
+  const { consultantId, psychologistId } = req.body;
+
+  if (!hasConsultant && !hasPsychologist) {
+    return res.status(400).json({ error: 'At least one assignment field is required' });
+  }
+
+  const { rows: clientRows } = await pool.query(
+    `select id
+     from profiles
+     where id = $1 and role = 'client'`,
+    [clientId],
+  );
+  if (clientRows.length === 0) {
+    return res.status(404).json({ error: 'Client not found' });
+  }
+
+  if (hasConsultant && consultantId !== null) {
+    const { rows } = await pool.query(
+      `select id
+       from profiles
+       where id = $1 and role = 'consultant'`,
+      [consultantId],
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid consultantId' });
+    }
+  }
+
+  if (hasPsychologist && psychologistId !== null) {
+    const { rows } = await pool.query(
+      `select id
+       from profiles
+       where id = $1 and role = 'psychologist'`,
+      [psychologistId],
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid psychologistId' });
+    }
+  }
+
+  const fields = [];
+  const params = [];
+  if (hasConsultant) {
+    params.push(consultantId ?? null);
+    fields.push(`consultant_id = $${params.length}`);
+  }
+  if (hasPsychologist) {
+    params.push(psychologistId ?? null);
+    fields.push(`psychologist_id = $${params.length}`);
+  }
+  params.push(clientId);
+
+  const { rows } = await pool.query(
+    `update profiles
+     set ${fields.join(', ')}
+     where id = $${params.length} and role = 'client'
+     returning id, username, full_name, role, consultant_id, psychologist_id`,
+    params,
+  );
+
+  return res.json(rows[0]);
 }));
 
 app.get('/api/decisions', authRequired, asyncHandler(async (req, res) => {
@@ -816,15 +1008,18 @@ app.get('/api/decisions/:id/details', authRequired, asyncHandler(async (req, res
     tasks = taskResult.rows;
   }
 
-  const commentParams = [decisionId];
-  let visibilityClause = '';
-  if (req.user.id === decisionMeta.user_id) {
-    visibilityClause = `and c.visibility = 'public'`;
-  }
-
+  const readableVisibilities = getReadableCommentVisibilities(req.user, decisionMeta);
   const { rows: comments } = await pool.query(
     `select
-       c.*,
+       c.id,
+       c.decision_id,
+       c.user_id,
+       c.content,
+       c.target_item_id,
+       c.task_id,
+       c.section,
+       case when c.visibility = 'internal' then 'staff_private' else c.visibility end as visibility,
+       c.created_at,
        json_build_object(
          'id', p.id,
          'username', p.username,
@@ -834,9 +1029,9 @@ app.get('/api/decisions/:id/details', authRequired, asyncHandler(async (req, res
      from comments c
      join profiles p on p.id = c.user_id
      where c.decision_id = $1
-     ${visibilityClause}
+       and (case when c.visibility = 'internal' then 'staff_private' else c.visibility end) = any($2::text[])
      order by c.created_at asc`,
-    commentParams,
+    [decisionId, readableVisibilities],
   );
 
   return res.json({ items, tasks, comments });
@@ -1009,7 +1204,7 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
       [normalizedTargetItemId],
     );
     const item = itemRows[0];
-    if (!item || item.decision_id !== decisionId) {
+    if (!item || String(item.decision_id) !== String(decisionId)) {
       return res.status(400).json({ error: 'target_item_id must belong to the same decision' });
     }
   }
@@ -1023,19 +1218,20 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
       [normalizedTaskId],
     );
     const task = taskRows[0];
-    if (!task || task.decision_id !== decisionId) {
+    if (!task || String(task.decision_id) !== String(decisionId)) {
       return res.status(400).json({ error: 'task_id must belong to the same decision' });
     }
-    if (normalizedTargetItemId !== null && task.decision_item_id !== normalizedTargetItemId) {
+    if (normalizedTargetItemId !== null && String(task.decision_item_id) !== String(normalizedTargetItemId)) {
       return res.status(400).json({ error: 'task_id does not match target_item_id' });
     }
   }
 
-  let finalVisibility = visibility;
+  const requestedVisibility = normalizeVisibilityInput(visibility);
+  let finalVisibility = requestedVisibility;
   if (req.user.id === decisionMeta.user_id) {
     finalVisibility = 'public';
   }
-  if (!['public', 'internal'].includes(finalVisibility)) {
+  if (!COMMENT_VISIBILITY_VALUES.has(finalVisibility)) {
     return res.status(400).json({ error: 'Invalid visibility value' });
   }
   if (!isStaff(req.user.role) && finalVisibility !== 'public') {
@@ -1045,24 +1241,39 @@ app.post('/api/comments', authRequired, asyncHandler(async (req, res) => {
     ? rawSection
     : 'general';
 
-  const { rows } = await pool.query(
-    `insert into comments (decision_id, user_id, content, target_item_id, task_id, visibility, section)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning *`,
-    [
-      decisionId,
-      req.user.id,
-      content.trim(),
-      normalizedTargetItemId,
-      normalizedTaskId,
-      finalVisibility,
-      normalizedSection,
-    ],
-  );
+  const insertComment = async (visibilityValue) => {
+    const { rows } = await pool.query(
+      `insert into comments (decision_id, user_id, content, target_item_id, task_id, visibility, section)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       returning *`,
+      [
+        decisionId,
+        req.user.id,
+        content.trim(),
+        normalizedTargetItemId,
+        normalizedTaskId,
+        visibilityValue,
+        normalizedSection,
+      ],
+    );
+    return rows[0];
+  };
 
-  const insertedComment = rows[0];
+  let insertedComment;
+  try {
+    insertedComment = await insertComment(finalVisibility);
+  } catch (error) {
+    if (!isCommentVisibilityConstraintError(error) || finalVisibility === 'public') {
+      throw error;
+    }
+
+    // Compatibility fallback for databases that still only accept legacy 'internal' visibility.
+    insertedComment = await insertComment('internal');
+  }
+
   const commentWithProfile = {
     ...insertedComment,
+    visibility: normalizeVisibilityInput(insertedComment.visibility),
     profiles: {
       id: req.user.id,
       username: req.user.username,

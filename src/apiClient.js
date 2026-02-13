@@ -68,10 +68,17 @@ export const api = {
   },
   profiles: {
     getAllConsultants: () => request('/api/profiles/consultants', { auth: false }),
+    getMyClients: () => request('/api/profiles/me/clients'),
+    getMyAssignments: () => request('/api/profiles/me/assignments'),
     getClientsForConsultant: (consultantId) => request(`/api/profiles/${consultantId}/clients`),
     assignClientToConsultant: (clientId, consultantId) =>
       request(`/api/profiles/${clientId}/consultant`, { method: 'PATCH', body: { consultantId } }),
     getAllUsers: () => request('/api/profiles/users'),
+  },
+  admin: {
+    createUser: (data) => request('/api/admin/users', { method: 'POST', body: data }),
+    updateClientAssignments: (clientId, data) =>
+      request(`/api/admin/clients/${clientId}/assignments`, { method: 'PATCH', body: data }),
   },
   decisions: {
     list: (userId) => request(`/api/decisions${buildQueryString({ userId })}`),

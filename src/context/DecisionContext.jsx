@@ -27,6 +27,8 @@ export const DecisionProvider = ({ children }) => {
   // Structure: { [decisionId]: { pros: [], cons: [], tasks: [], comments: [] } }
   const [decisionItems, setDecisionItems] = useState({});
   const activeUserId = viewingUserId || currentUser?.id;
+  const isStaffRole = ['consultant', 'psychologist', 'supervisor'].includes(currentUser?.role);
+  const isReadOnlyView = Boolean(viewingUserId && isStaffRole);
 
   const fetchDecisions = useCallback(async (userId) => {
     if (!userId && !currentUser) return;
@@ -154,7 +156,7 @@ export const DecisionProvider = ({ children }) => {
   }, [decisions, currentDecisionId, decisionItems]);
 
   const createDecision = async (title, description) => {
-    if (!currentUser) return;
+    if (!currentUser || isReadOnlyView) return;
 
     const newDecision = {
       user_id: currentUser.id,
@@ -207,6 +209,9 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const updateDecision = async (id, updates) => {
+    if (isReadOnlyView) {
+      return { ok: false, outcomeEvent: null };
+    }
     // Optimistic update for decision fields
     setDecisions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
 
@@ -230,6 +235,8 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const deleteDecision = async (id) => {
+    if (isReadOnlyView) return;
+
     setDecisions(prev => prev.filter(d => d.id !== id));
     if (currentDecisionId === id) {
       setCurrentDecisionId(null);
@@ -245,7 +252,7 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const addItem = async (type, text, weight = 0) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     const newItem = {
       decision_id: currentDecisionId,
@@ -293,7 +300,7 @@ export const DecisionProvider = ({ children }) => {
   const addCon = (text, weight) => addItem('con', text, weight);
 
   const updateItem = async (type, itemId, updates) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     // Optimistic
     setDecisionItems(prev => {
@@ -320,7 +327,7 @@ export const DecisionProvider = ({ children }) => {
   const updateStrategy = (type, itemId, strategy) => updateItem(type === 'pros' ? 'pro' : 'con', itemId, { strategy });
 
   const removeItem = async (type, itemId) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
 
     // Optimistic
     setDecisionItems(prev => {
@@ -345,6 +352,10 @@ export const DecisionProvider = ({ children }) => {
 
   const setStep = (step) => {
     if (!currentDecisionId) return;
+    if (isReadOnlyView) {
+      setViewStep(step);
+      return;
+    }
     setViewStep(step); // Sync view immediately
     updateDecision(currentDecisionId, { step });
   };
@@ -364,7 +375,7 @@ export const DecisionProvider = ({ children }) => {
   };
 
   const updateDecisionInfo = (title, description) => {
-    if (!currentDecisionId) return;
+    if (!currentDecisionId || isReadOnlyView) return;
     updateDecision(currentDecisionId, { title, description });
   };
 
@@ -394,6 +405,7 @@ export const DecisionProvider = ({ children }) => {
     viewStep,
     setViewStep,
     decisionViewMode,
+    isReadOnlyView,
     // Expose decisionItems and setDecisionItems for TaskContext and CommentContext
     decisionItems,
     setDecisionItems,
