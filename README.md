@@ -60,7 +60,12 @@ VITE_API_URL=
 DATABASE_URL=postgresql://decision_app:decision_app@localhost:55434/decision_app
 JWT_SECRET=replace-with-a-long-random-secret
 PORT=4000
+ALLOW_PUBLIC_SIGNUP=false
 ```
+
+`ALLOW_PUBLIC_SIGNUP` controls self-signup via `/api/auth/signup`:
+- `false` disables public signup (recommended for production).
+- `true` enables public signup (default if variable is omitted).
 
 ## Database Initialization
 

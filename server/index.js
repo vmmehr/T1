@@ -30,6 +30,14 @@ app.use(express.json());
 const asyncHandler = (handler) => (req, res, next) =>
   Promise.resolve(handler(req, res, next)).catch(next);
 
+const parseBooleanEnv = (value, defaultValue = false) => {
+  if (value === undefined) return defaultValue;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return defaultValue;
+};
+
 const isSupervisor = (role) => role === 'supervisor';
 const isConsultant = (role) => role === 'consultant';
 const isPsychologist = (role) => role === 'psychologist';
@@ -38,6 +46,7 @@ const VALID_DECISION_STATUS = new Set(['pending', 'success', 'fail']);
 const FINAL_DECISION_STATUSES = new Set(['success', 'fail']);
 const COMMENT_VISIBILITY_VALUES = new Set(['public', 'staff_private', 'psychologist_private']);
 const COMMENT_STEP_SCOPES = new Set(['definition', 'analysis', 'strategy']);
+const allowPublicSignup = parseBooleanEnv(process.env.ALLOW_PUBLIC_SIGNUP, true);
 
 const publicUser = (user) => ({
   id: user.id,
@@ -440,6 +449,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.post('/api/auth/signup', asyncHandler(async (req, res) => {
+  if (!allowPublicSignup) {
+    return res.status(403).json({ error: 'Public signup is disabled. Please contact a supervisor.' });
+  }
+
   const { username, password, fullName } = req.body;
 
   if (!username || !password || !fullName) {
