@@ -693,7 +693,7 @@ app.post('/api/admin/users', authRequired, asyncHandler(async (req, res) => {
   }
 
   const { username, password, fullName, role } = req.body;
-  const allowedRoles = new Set(['client', 'consultant', 'psychologist']);
+  const allowedRoles = new Set(['client', 'consultant', 'psychologist', 'supervisor']);
 
   if (!username || !password || !fullName || !role) {
     return res.status(400).json({ error: 'username, password, fullName, and role are required' });

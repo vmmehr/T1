@@ -253,6 +253,7 @@ const Dashboard = () => {
                         >
                             <option value="consultant">Consultant</option>
                             <option value="psychologist">Psychologist</option>
+                            <option value="supervisor">Supervisor</option>
                             <option value="client">Client</option>
                         </select>
                         <button className="btn btn-primary" type="submit">Create User</button>
