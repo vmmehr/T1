@@ -81,38 +81,6 @@ const Home = () => {
                 </div>
             </div>
 
-            <div className={`glass-panel ${styles.statsStrip}`}>
-                <div className={styles.kpiItem}>
-                    <p className={styles.kpiLabel}>نرخ موفقیت</p>
-                    <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.success_rate)}
-                    </p>
-                </div>
-                <div className={styles.kpiItem}>
-                    <p className={styles.kpiLabel}>نرخ تکمیل</p>
-                    <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.completion_rate)}
-                    </p>
-                </div>
-                <div className={styles.kpiItem}>
-                    <p className={styles.kpiLabel}>تصمیم‌های نهایی‌شده</p>
-                    <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.finalized_count)}
-                    </p>
-                </div>
-                <div className={styles.kpiItem}>
-                    <p className={styles.kpiLabel}>تصمیم‌های باز</p>
-                    <p className={styles.kpiValue}>
-                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.pending_count)}
-                    </p>
-                </div>
-            </div>
-            {!decisionStatsLoading && decisionStats?.low_sample_size && (
-                <p className={styles.lowSampleWarning}>
-                    حجم نمونه پایین است (کمتر از {formatNumber(20)} تصمیم نهایی). این درصدها با احتیاط تفسیر شوند.
-                </p>
-            )}
-
             {showNewForm && (
                 <div className={`glass-panel ${styles.newForm}`}>
                     <h3 className={styles.formTitle}>تعریف تصمیم جدید</h3>
@@ -211,6 +179,38 @@ const Home = () => {
                         );
                     })}
                 </div>
+            )}
+
+            <div className={`glass-panel ${styles.statsStrip}`}>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>نرخ موفقیت</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.success_rate)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>نرخ تکمیل</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatPercent(decisionStats?.completion_rate)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>تصمیم‌های نهایی‌شده</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.finalized_count)}
+                    </p>
+                </div>
+                <div className={styles.kpiItem}>
+                    <p className={styles.kpiLabel}>تصمیم‌های باز</p>
+                    <p className={styles.kpiValue}>
+                        {decisionStatsLoading ? '...' : formatNumber(decisionStats?.pending_count)}
+                    </p>
+                </div>
+            </div>
+            {!decisionStatsLoading && decisionStats?.low_sample_size && (
+                <p className={styles.lowSampleWarning}>
+                    حجم نمونه پایین است (کمتر از {formatNumber(20)} تصمیم نهایی). این درصدها با احتیاط تفسیر شوند.
+                </p>
             )}
         </div>
     );
