@@ -78,6 +78,7 @@ export const api = {
   },
   admin: {
     createUser: (data) => request('/api/admin/users', { method: 'POST', body: data }),
+    deleteUser: (userId) => request(`/api/admin/users/${userId}`, { method: 'DELETE' }),
     updateClientAssignments: (clientId, data) =>
       request(`/api/admin/clients/${clientId}/assignments`, { method: 'PATCH', body: data }),
   },

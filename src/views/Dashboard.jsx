@@ -14,6 +14,7 @@ const Dashboard = () => {
         getAllUsers,
         getMyAssignments,
         createUserByAdmin,
+        deleteUserByAdmin,
         updateClientAssignmentsByAdmin
     } = useAuth();
     const { setViewingUserId } = useDecision();
@@ -29,6 +30,7 @@ const Dashboard = () => {
         role: 'consultant'
     });
     const [loading, setLoading] = useState(true);
+    const [deletingUserId, setDeletingUserId] = useState(null);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const formatNumber = (value) => faNumberFormatter.format(Number(value ?? 0));
@@ -105,6 +107,11 @@ const Dashboard = () => {
         [allUsers]
     );
 
+    const usersByCreatedAt = useMemo(
+        () => [...allUsers],
+        [allUsers]
+    );
+
     const handleCreateUser = async (event) => {
         event.preventDefault();
         setError('');
@@ -144,6 +151,34 @@ const Dashboard = () => {
             await loadData();
         } catch (assignError) {
             setError(assignError.message || 'Failed to update assignments');
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        const isSelf = String(user.id) === String(currentUser?.id);
+        if (isSelf) {
+            setError('You cannot delete your own account.');
+            return;
+        }
+
+        const displayName = user.full_name || user.username;
+        const confirmed = window.confirm(
+            `Are you sure you want to remove "${displayName}" (${user.username})?\nThis action cannot be undone.`
+        );
+        if (!confirmed) return;
+
+        setError('');
+        setSuccessMessage('');
+        setDeletingUserId(user.id);
+
+        try {
+            await deleteUserByAdmin(user.id);
+            setSuccessMessage(`User "${user.username}" removed successfully.`);
+            await loadData();
+        } catch (deleteError) {
+            setError(deleteError.message || 'Failed to remove user');
+        } finally {
+            setDeletingUserId(null);
         }
     };
 
@@ -314,6 +349,35 @@ const Dashboard = () => {
                                             onClick={() => handleSaveAssignments(client.id)}
                                         >
                                             Save Assignments
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '2rem' }}>
+                    <h3>All Users</h3>
+                    <div className={styles.usersGrid}>
+                        {usersByCreatedAt.map((user) => {
+                            const isSelf = String(user.id) === String(currentUser.id);
+                            const isDeletingThis = String(deletingUserId) === String(user.id);
+
+                            return (
+                                <div key={user.id} className={styles.userCard}>
+                                    <h4 className={styles.clientName}>{user.full_name || user.username}</h4>
+                                    <p className={styles.clientUsername}>Username: {user.username}</p>
+                                    <p className={styles.clientUsername}>Role: {user.role}</p>
+                                    {isSelf && <p className={styles.warningText}>Current account cannot be removed.</p>}
+                                    <div className={styles.userActions}>
+                                        <button
+                                            type="button"
+                                            className={`btn ${styles.removeUserButton}`}
+                                            onClick={() => handleDeleteUser(user)}
+                                            disabled={isSelf || isDeletingThis}
+                                        >
+                                            {isDeletingThis ? 'Removing...' : 'Remove User'}
                                         </button>
                                     </div>
                                 </div>

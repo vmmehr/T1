@@ -86,6 +86,10 @@ export const AuthProvider = ({ children }) => {
         return api.admin.createUser(data);
     }, []);
 
+    const deleteUserByAdmin = useCallback(async (userId) => {
+        return api.admin.deleteUser(userId);
+    }, []);
+
     const updateClientAssignmentsByAdmin = useCallback(async (clientId, data) => {
         return api.admin.updateClientAssignments(clientId, data);
     }, []);
@@ -101,6 +105,7 @@ export const AuthProvider = ({ children }) => {
         getAllUsers,
         getMyAssignments,
         createUserByAdmin,
+        deleteUserByAdmin,
         updateClientAssignmentsByAdmin
     }), [
         currentUser,
@@ -113,6 +118,7 @@ export const AuthProvider = ({ children }) => {
         getAllUsers,
         getMyAssignments,
         createUserByAdmin,
+        deleteUserByAdmin,
         updateClientAssignmentsByAdmin
     ]);
 

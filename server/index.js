@@ -82,6 +82,11 @@ const parsePositiveId = (value) => {
   return null;
 };
 
+const isUuid = (value) => (
+  typeof value === 'string'
+  && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+);
+
 const parseIsoDate = (value) => {
   if (!value) return null;
   const parsed = new Date(value);
@@ -730,6 +735,67 @@ app.post('/api/admin/users', authRequired, asyncHandler(async (req, res) => {
     }
     throw error;
   }
+}));
+
+app.delete('/api/admin/users/:userId', authRequired, asyncHandler(async (req, res) => {
+  if (!isSupervisor(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { userId } = req.params;
+  if (!isUuid(userId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  if (String(req.user.id) === String(userId)) {
+    return res.status(400).json({ error: 'You cannot delete your own account' });
+  }
+
+  const { rows: targetUserRows } = await pool.query(
+    `select id, role
+     from profiles
+     where id = $1`,
+    [userId],
+  );
+
+  if (targetUserRows.length === 0) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  if (targetUserRows[0].role === 'supervisor') {
+    const { rows: supervisorRows } = await pool.query(
+      `select count(*)::int as total
+       from profiles
+       where role = 'supervisor'`,
+    );
+
+    if (Number(supervisorRows[0]?.total || 0) <= 1) {
+      return res.status(400).json({ error: 'Cannot delete the last supervisor account' });
+    }
+  }
+
+  const { rows: deletedRows } = await pool.query(
+    `with clear_consultant_assignments as (
+       update profiles
+       set consultant_id = null
+       where consultant_id = $1
+     ),
+     clear_psychologist_assignments as (
+       update profiles
+       set psychologist_id = null
+       where psychologist_id = $1
+     )
+     delete from profiles
+     where id = $1
+     returning id, username, full_name, role`,
+    [userId],
+  );
+
+  if (deletedRows.length === 0) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  return res.json({ deletedUser: deletedRows[0] });
 }));
 
 app.patch('/api/admin/clients/:clientId/assignments', authRequired, asyncHandler(async (req, res) => {
