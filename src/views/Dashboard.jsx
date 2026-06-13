@@ -6,6 +6,14 @@ import styles from './Dashboard.module.css';
 
 const faNumberFormatter = new Intl.NumberFormat('fa-IR');
 
+const ROLE_LABELS = {
+    client: 'مراجع',
+    consultant: 'مشاور',
+    psychologist: 'روان‌شناس',
+    supervisor: 'سرپرست',
+};
+const roleLabel = (role) => ROLE_LABELS[role] || role;
+
 const Dashboard = () => {
     const {
         currentUser,
@@ -120,10 +128,10 @@ const Dashboard = () => {
         try {
             await createUserByAdmin(createForm);
             setCreateForm({ fullName: '', username: '', password: '', role: 'consultant' });
-            setSuccessMessage('User created successfully.');
+            setSuccessMessage('کاربر با موفقیت ایجاد شد.');
             await loadData();
         } catch (createError) {
-            setError(createError.message || 'Failed to create user');
+            setError(createError.message || 'ایجاد کاربر ناموفق بود.');
         }
     };
 
@@ -147,23 +155,23 @@ const Dashboard = () => {
                 consultantId: draft.consultantId || null,
                 psychologistId: draft.psychologistId || null
             });
-            setSuccessMessage('Assignments updated successfully.');
+            setSuccessMessage('ارجاع‌ها با موفقیت به‌روزرسانی شد.');
             await loadData();
         } catch (assignError) {
-            setError(assignError.message || 'Failed to update assignments');
+            setError(assignError.message || 'به‌روزرسانی ارجاع‌ها ناموفق بود.');
         }
     };
 
     const handleDeleteUser = async (user) => {
         const isSelf = String(user.id) === String(currentUser?.id);
         if (isSelf) {
-            setError('You cannot delete your own account.');
+            setError('نمی‌توانید حساب کاربری خودتان را حذف کنید.');
             return;
         }
 
         const displayName = user.full_name || user.username;
         const confirmed = window.confirm(
-            `Are you sure you want to remove "${displayName}" (${user.username})?\nThis action cannot be undone.`
+            `آیا از حذف «${displayName}» (${user.username}) مطمئن هستید؟\nاین عملیات قابل بازگشت نیست.`
         );
         if (!confirmed) return;
 
@@ -173,10 +181,10 @@ const Dashboard = () => {
 
         try {
             await deleteUserByAdmin(user.id);
-            setSuccessMessage(`User "${user.username}" removed successfully.`);
+            setSuccessMessage(`کاربر «${user.username}» با موفقیت حذف شد.`);
             await loadData();
         } catch (deleteError) {
-            setError(deleteError.message || 'Failed to remove user');
+            setError(deleteError.message || 'حذف کاربر ناموفق بود.');
         } finally {
             setDeletingUserId(null);
         }
@@ -251,24 +259,24 @@ const Dashboard = () => {
     if (currentUser.role === 'supervisor') {
         return (
             <div className={styles.container}>
-                <h2>Supervisor Dashboard</h2>
-                <p>Welcome, {currentUser.full_name || currentUser.username}</p>
+                <h2>داشبورد سرپرست</h2>
+                <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
                 {error && <p className={styles.errorText}>{error}</p>}
                 {successMessage && <p className={styles.successText}>{successMessage}</p>}
 
                 <div className={styles.adminSection}>
-                    <h3>Create User</h3>
+                    <h3>ایجاد کاربر</h3>
                     <form onSubmit={handleCreateUser} className={styles.adminForm}>
                         <input
                             className="input-field"
-                            placeholder="Full name"
+                            placeholder="نام و نام خانوادگی"
                             value={createForm.fullName}
                             onChange={(event) => setCreateForm(prev => ({ ...prev, fullName: event.target.value }))}
                             required
                         />
                         <input
                             className="input-field"
-                            placeholder="Username"
+                            placeholder="نام کاربری"
                             value={createForm.username}
                             onChange={(event) => setCreateForm(prev => ({ ...prev, username: event.target.value }))}
                             required
@@ -276,7 +284,7 @@ const Dashboard = () => {
                         <input
                             type="password"
                             className="input-field"
-                            placeholder="Password"
+                            placeholder="رمز عبور"
                             value={createForm.password}
                             onChange={(event) => setCreateForm(prev => ({ ...prev, password: event.target.value }))}
                             required
@@ -286,36 +294,36 @@ const Dashboard = () => {
                             value={createForm.role}
                             onChange={(event) => setCreateForm(prev => ({ ...prev, role: event.target.value }))}
                         >
-                            <option value="consultant">Consultant</option>
-                            <option value="psychologist">Psychologist</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="client">Client</option>
+                            <option value="consultant">مشاور</option>
+                            <option value="psychologist">روان‌شناس</option>
+                            <option value="supervisor">سرپرست</option>
+                            <option value="client">مراجع</option>
                         </select>
-                        <button className="btn btn-primary" type="submit">Create User</button>
+                        <button className="btn btn-primary" type="submit">ایجاد کاربر</button>
                     </form>
                 </div>
 
                 <div style={{ marginTop: '2rem' }}>
-                    <h3>All Clients</h3>
+                    <h3>همه مراجعان</h3>
                     <div className={styles.clientsGrid}>
                         {allClients.map(client => {
                             const draft = assignmentDrafts[client.id] || { consultantId: '', psychologistId: '' };
-                            const consultantName = consultants.find(u => u.id === client.consultant_id)?.full_name || 'Not assigned';
-                            const psychologistName = psychologists.find(u => u.id === client.psychologist_id)?.full_name || 'Not assigned';
+                            const consultantName = consultants.find(u => u.id === client.consultant_id)?.full_name || 'تعیین‌نشده';
+                            const psychologistName = psychologists.find(u => u.id === client.psychologist_id)?.full_name || 'تعیین‌نشده';
 
                             return (
                                 <div key={client.id} className={styles.clientCard}>
                                     <h4 className={styles.clientName}>{client.full_name || client.username}</h4>
-                                    <p className={styles.clientUsername}>Consultant: {consultantName}</p>
-                                    <p className={styles.clientUsername}>Psychologist: {psychologistName}</p>
+                                    <p className={styles.clientUsername}>مشاور: {consultantName}</p>
+                                    <p className={styles.clientUsername}>روان‌شناس: {psychologistName}</p>
 
-                                    <label className={styles.assignmentLabel}>Consultant</label>
+                                    <label className={styles.assignmentLabel}>مشاور</label>
                                     <select
                                         className="input-field"
                                         value={draft.consultantId}
                                         onChange={(event) => handleAssignmentDraftChange(client.id, 'consultantId', event.target.value)}
                                     >
-                                        <option value="">Unassigned</option>
+                                        <option value="">تعیین‌نشده</option>
                                         {consultants.map((consultant) => (
                                             <option key={consultant.id} value={consultant.id}>
                                                 {consultant.full_name || consultant.username}
@@ -323,13 +331,13 @@ const Dashboard = () => {
                                         ))}
                                     </select>
 
-                                    <label className={styles.assignmentLabel}>Psychologist</label>
+                                    <label className={styles.assignmentLabel}>روان‌شناس</label>
                                     <select
                                         className="input-field"
                                         value={draft.psychologistId}
                                         onChange={(event) => handleAssignmentDraftChange(client.id, 'psychologistId', event.target.value)}
                                     >
-                                        <option value="">Unassigned</option>
+                                        <option value="">تعیین‌نشده</option>
                                         {psychologists.map((psychologist) => (
                                             <option key={psychologist.id} value={psychologist.id}>
                                                 {psychologist.full_name || psychologist.username}
@@ -342,13 +350,13 @@ const Dashboard = () => {
                                             className="btn"
                                             onClick={() => setViewingUserId(client.id)}
                                         >
-                                            View Case
+                                            مشاهده پرونده
                                         </button>
                                         <button
                                             className="btn btn-primary"
                                             onClick={() => handleSaveAssignments(client.id)}
                                         >
-                                            Save Assignments
+                                            ذخیره ارجاع‌ها
                                         </button>
                                     </div>
                                 </div>
@@ -358,7 +366,7 @@ const Dashboard = () => {
                 </div>
 
                 <div style={{ marginTop: '2rem' }}>
-                    <h3>All Users</h3>
+                    <h3>همه کاربران</h3>
                     <div className={styles.usersGrid}>
                         {usersByCreatedAt.map((user) => {
                             const isSelf = String(user.id) === String(currentUser.id);
@@ -367,9 +375,9 @@ const Dashboard = () => {
                             return (
                                 <div key={user.id} className={styles.userCard}>
                                     <h4 className={styles.clientName}>{user.full_name || user.username}</h4>
-                                    <p className={styles.clientUsername}>Username: {user.username}</p>
-                                    <p className={styles.clientUsername}>Role: {user.role}</p>
-                                    {isSelf && <p className={styles.warningText}>Current account cannot be removed.</p>}
+                                    <p className={styles.clientUsername}>نام کاربری: {user.username}</p>
+                                    <p className={styles.clientUsername}>نقش: {roleLabel(user.role)}</p>
+                                    {isSelf && <p className={styles.warningText}>حساب فعلی قابل حذف نیست.</p>}
                                     <div className={styles.userActions}>
                                         <button
                                             type="button"
@@ -377,7 +385,7 @@ const Dashboard = () => {
                                             onClick={() => handleDeleteUser(user)}
                                             disabled={isSelf || isDeletingThis}
                                         >
-                                            {isDeletingThis ? 'Removing...' : 'Remove User'}
+                                            {isDeletingThis ? 'در حال حذف...' : 'حذف کاربر'}
                                         </button>
                                     </div>
                                 </div>
