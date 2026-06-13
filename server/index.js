@@ -3,6 +3,7 @@ import express from 'express';
 
 import { allowedOrigins, port } from './config.js';
 import adminRouter from './routes/admin.js';
+import analyticsRouter from './routes/analytics.js';
 import authRouter from './routes/auth.js';
 import commentsRouter from './routes/comments.js';
 import decisionItemsRouter from './routes/decisionItems.js';
@@ -33,6 +34,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/analytics', analyticsRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/decision-items', decisionItemsRouter);

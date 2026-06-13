@@ -102,6 +102,9 @@ export const api = {
     update: (id, updates) => request(`/api/tasks/${id}`, { method: 'PATCH', body: updates }),
     delete: (id) => request(`/api/tasks/${id}`, { method: 'DELETE' }),
   },
+  analytics: {
+    overview: () => request('/api/analytics/overview'),
+  },
   comments: {
     create: (data) => request('/api/comments', { method: 'POST', body: data }),
     delete: (id) => request(`/api/comments/${id}`, { method: 'DELETE' }),

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDecision } from '../context/DecisionContext';
 import Home from './Home';
+import AnalyticsPanel from '../components/AnalyticsPanel';
 import styles from './Dashboard.module.css';
 
 const faNumberFormatter = new Intl.NumberFormat('fa-IR');
@@ -216,13 +217,15 @@ const Dashboard = () => {
     }
 
     if (currentUser.role === 'consultant' || currentUser.role === 'psychologist') {
-        const roleLabel = currentUser.role === 'consultant' ? 'مشاور' : 'روان‌شناس';
+        const roleTitle = currentUser.role === 'consultant' ? 'مشاور' : 'روان‌شناس';
 
         return (
             <div className={styles.container}>
-                <h2>داشبورد {roleLabel}</h2>
+                <h2>داشبورد {roleTitle}</h2>
                 <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
                 {error && <p className={styles.errorText}>{error}</p>}
+
+                <AnalyticsPanel />
 
                 <div style={{ marginTop: '2rem' }}>
                     <h3>مراجع‌های ارجاع‌شده</h3>
@@ -263,6 +266,8 @@ const Dashboard = () => {
                 <p>خوش آمدید، {currentUser.full_name || currentUser.username}</p>
                 {error && <p className={styles.errorText}>{error}</p>}
                 {successMessage && <p className={styles.successText}>{successMessage}</p>}
+
+                <AnalyticsPanel />
 
                 <div className={styles.adminSection}>
                     <h3>ایجاد کاربر</h3>
