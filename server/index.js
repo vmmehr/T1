@@ -24,7 +24,29 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-app.use(cors());
+// Do not advertise the framework in responses.
+app.disable('x-powered-by');
+
+// Restrict cross-origin access to known frontends. The production frontend is
+// served same-origin (nginx proxies /api), so this never blocks the real app;
+// it only stops other browser origins from scripting the API. Configure extra
+// origins via CORS_ORIGIN (comma-separated).
+const allowedOrigins = (process.env.CORS_ORIGIN || 'https://tyek.ir')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow non-browser / same-origin requests (no Origin header).
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+  }),
+);
 app.use(express.json());
 
 const asyncHandler = (handler) => (req, res, next) =>
