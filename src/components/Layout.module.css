@@ -49,3 +49,33 @@
   color: var(--color-text-muted);
 }
 
+@media (max-width: 560px) {
+  .header {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .headerContent {
+    padding-top: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+  }
+
+  .logoContainer {
+    gap: 0.6rem;
+  }
+
+  .logo {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+
+  .footer {
+    margin-top: var(--spacing-lg);
+    font-size: 0.85rem;
+  }
+}
+
