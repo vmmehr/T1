@@ -94,6 +94,10 @@ const AppContent = () => {
   const path = window.location.pathname;
 
   if (!currentUser) {
+    if (path.startsWith('/invite/')) {
+      const inviteToken = decodeURIComponent(path.slice('/invite/'.length));
+      return <Signup inviteToken={inviteToken} />;
+    }
     if (path === '/signup') {
       return <Signup />;
     }

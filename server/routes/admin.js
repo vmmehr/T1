@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import express from 'express';
 
 import { authRequired } from '../auth.js';
+import { logAudit } from '../audit.js';
 import { pool } from '../db.js';
 import {
   asyncHandler,
@@ -35,7 +36,15 @@ router.post('/users', authRequired, asyncHandler(async (req, res) => {
        returning id, username, full_name, role, consultant_id, psychologist_id`,
       [username, hashedPassword, fullName, role],
     );
-    return res.status(201).json(publicUser(rows[0]));
+    const created = rows[0];
+    await logAudit({
+      actorId: req.user.id,
+      action: 'user_created',
+      targetType: 'profile',
+      targetId: created.id,
+      details: { username: created.username, role: created.role },
+    });
+    return res.status(201).json(publicUser(created));
   } catch (error) {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Username already exists' });
@@ -101,6 +110,14 @@ router.delete('/users/:userId', authRequired, asyncHandler(async (req, res) => {
   if (deletedRows.length === 0) {
     return res.status(404).json({ error: 'User not found' });
   }
+
+  await logAudit({
+    actorId: req.user.id,
+    action: 'user_deleted',
+    targetType: 'profile',
+    targetId: deletedRows[0].id,
+    details: { username: deletedRows[0].username, role: deletedRows[0].role },
+  });
 
   return res.json({ deletedUser: deletedRows[0] });
 }));
@@ -172,6 +189,17 @@ router.patch('/clients/:clientId/assignments', authRequired, asyncHandler(async 
      returning id, username, full_name, role, consultant_id, psychologist_id`,
     params,
   );
+
+  await logAudit({
+    actorId: req.user.id,
+    action: 'assignments_updated',
+    targetType: 'profile',
+    targetId: clientId,
+    details: {
+      ...(hasConsultant ? { consultant_id: consultantId ?? null } : {}),
+      ...(hasPsychologist ? { psychologist_id: psychologistId ?? null } : {}),
+    },
+  });
 
   return res.json(rows[0]);
 }));

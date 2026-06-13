@@ -62,6 +62,7 @@ const request = async (path, { method = 'GET', body, auth = true } = {}) => {
 export const api = {
   auth: {
     signup: (data) => request('/api/auth/signup', { method: 'POST', body: data, auth: false }),
+    acceptInvite: (data) => request('/api/auth/accept-invite', { method: 'POST', body: data, auth: false }),
     login: (username, password) =>
       request('/api/auth/login', { method: 'POST', body: { username, password }, auth: false }),
     me: () => request('/api/auth/me'),
@@ -104,6 +105,15 @@ export const api = {
   },
   analytics: {
     overview: () => request('/api/analytics/overview'),
+  },
+  invitations: {
+    create: (data) => request('/api/invitations', { method: 'POST', body: data }),
+    list: () => request('/api/invitations'),
+    validate: (token) => request(`/api/invitations/${token}`, { auth: false }),
+    revoke: (id) => request(`/api/invitations/${id}`, { method: 'DELETE' }),
+  },
+  audit: {
+    list: (limit) => request(`/api/audit${limit ? `?limit=${limit}` : ''}`),
   },
   comments: {
     create: (data) => request('/api/comments', { method: 'POST', body: data }),

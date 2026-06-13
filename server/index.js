@@ -4,10 +4,12 @@ import express from 'express';
 import { allowedOrigins, port } from './config.js';
 import adminRouter from './routes/admin.js';
 import analyticsRouter from './routes/analytics.js';
+import auditRouter from './routes/audit.js';
 import authRouter from './routes/auth.js';
 import commentsRouter from './routes/comments.js';
 import decisionItemsRouter from './routes/decisionItems.js';
 import decisionsRouter from './routes/decisions.js';
+import invitationsRouter from './routes/invitations.js';
 import profilesRouter from './routes/profiles.js';
 import tasksRouter from './routes/tasks.js';
 
@@ -35,6 +37,8 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/invitations', invitationsRouter);
+app.use('/api/audit', auditRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/decision-items', decisionItemsRouter);

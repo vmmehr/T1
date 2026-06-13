@@ -51,6 +51,12 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(user);
     }, []);
 
+    const acceptInvite = useCallback(async (inviteData) => {
+        const { token, user } = await api.auth.acceptInvite(inviteData);
+        tokenStorage.set(token);
+        setCurrentUser(user);
+    }, []);
+
     const login = useCallback(async (username, password) => {
         const { token, user } = await api.auth.login(username, password);
         tokenStorage.set(token);
@@ -97,6 +103,7 @@ export const AuthProvider = ({ children }) => {
     const value = useMemo(() => ({
         currentUser,
         signup,
+        acceptInvite,
         login,
         logout,
         getMyClients,
@@ -110,6 +117,7 @@ export const AuthProvider = ({ children }) => {
     }), [
         currentUser,
         signup,
+        acceptInvite,
         login,
         logout,
         getMyClients,

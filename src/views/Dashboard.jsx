@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useDecision } from '../context/DecisionContext';
 import Home from './Home';
 import AnalyticsPanel from '../components/AnalyticsPanel';
+import InvitePanel from '../components/InvitePanel';
+import AuditPanel from '../components/AuditPanel';
 import styles from './Dashboard.module.css';
 
 const faNumberFormatter = new Intl.NumberFormat('fa-IR');
@@ -227,6 +229,8 @@ const Dashboard = () => {
 
                 <AnalyticsPanel />
 
+                <InvitePanel role={currentUser.role} />
+
                 <div style={{ marginTop: '2rem' }}>
                     <h3>مراجع‌های ارجاع‌شده</h3>
                     {myClients.length === 0 ? (
@@ -268,6 +272,8 @@ const Dashboard = () => {
                 {successMessage && <p className={styles.successText}>{successMessage}</p>}
 
                 <AnalyticsPanel />
+
+                <InvitePanel role={currentUser.role} />
 
                 <div className={styles.adminSection}>
                     <h3>ایجاد کاربر</h3>
@@ -398,6 +404,8 @@ const Dashboard = () => {
                         })}
                     </div>
                 </div>
+
+                <AuditPanel />
             </div>
         );
     }
