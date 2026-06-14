@@ -26,7 +26,8 @@ const Dashboard = () => {
         getMyAssignments,
         createUserByAdmin,
         deleteUserByAdmin,
-        updateClientAssignmentsByAdmin
+        updateClientAssignmentsByAdmin,
+        createPasswordResetLink
     } = useAuth();
     const { setViewingUserId } = useDecision();
 
@@ -42,6 +43,7 @@ const Dashboard = () => {
     });
     const [loading, setLoading] = useState(true);
     const [deletingUserId, setDeletingUserId] = useState(null);
+    const [resetLinks, setResetLinks] = useState({});
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const formatNumber = (value) => faNumberFormatter.format(Number(value ?? 0));
@@ -162,6 +164,24 @@ const Dashboard = () => {
             await loadData();
         } catch (assignError) {
             setError(assignError.message || 'به‌روزرسانی ارجاع‌ها ناموفق بود.');
+        }
+    };
+
+    const handleResetPassword = async (user) => {
+        setError('');
+        setSuccessMessage('');
+        try {
+            const reset = await createPasswordResetLink(user.id);
+            const link = `${window.location.origin}/reset/${reset.token}`;
+            setResetLinks((prev) => ({ ...prev, [user.id]: link }));
+            try {
+                await navigator.clipboard.writeText(link);
+                setSuccessMessage(`لینک بازنشانی رمز برای «${user.username}» ساخته و کپی شد.`);
+            } catch {
+                setSuccessMessage(`لینک بازنشانی رمز برای «${user.username}» ساخته شد.`);
+            }
+        } catch (resetError) {
+            setError(resetError.message || 'ساخت لینک بازنشانی ناموفق بود.');
         }
     };
 
@@ -392,6 +412,13 @@ const Dashboard = () => {
                                     <div className={styles.userActions}>
                                         <button
                                             type="button"
+                                            className="btn"
+                                            onClick={() => handleResetPassword(user)}
+                                        >
+                                            بازنشانی رمز
+                                        </button>
+                                        <button
+                                            type="button"
                                             className={`btn ${styles.removeUserButton}`}
                                             onClick={() => handleDeleteUser(user)}
                                             disabled={isSelf || isDeletingThis}
@@ -399,6 +426,15 @@ const Dashboard = () => {
                                             {isDeletingThis ? 'در حال حذف...' : 'حذف کاربر'}
                                         </button>
                                     </div>
+                                    {resetLinks[user.id] && (
+                                        <input
+                                            className="input-field"
+                                            style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}
+                                            readOnly
+                                            value={resetLinks[user.id]}
+                                            onFocus={(event) => event.target.select()}
+                                        />
+                                    )}
                                 </div>
                             );
                         })}

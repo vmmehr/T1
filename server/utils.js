@@ -11,6 +11,9 @@ export const parseBooleanEnv = (value, defaultValue = false) => {
   return defaultValue;
 };
 
+// Usernames are case-insensitive: store and compare in lowercase.
+export const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
+
 export const isSupervisor = (role) => role === 'supervisor';
 export const isConsultant = (role) => role === 'consultant';
 export const isPsychologist = (role) => role === 'psychologist';

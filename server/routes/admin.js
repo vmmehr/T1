@@ -8,6 +8,7 @@ import {
   asyncHandler,
   isSupervisor,
   isUuid,
+  normalizeUsername,
   publicUser,
 } from '../utils.js';
 
@@ -18,7 +19,8 @@ router.post('/users', authRequired, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { username, password, fullName, role } = req.body;
+  const { password, fullName, role } = req.body;
+  const username = normalizeUsername(req.body.username);
   const allowedRoles = new Set(['client', 'consultant', 'psychologist', 'supervisor']);
 
   if (!username || !password || !fullName || !role) {

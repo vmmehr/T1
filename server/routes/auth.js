@@ -5,7 +5,7 @@ import { authRequired, signToken } from '../auth.js';
 import { logAudit } from '../audit.js';
 import { allowPublicSignup } from '../config.js';
 import { pool } from '../db.js';
-import { asyncHandler, publicUser } from '../utils.js';
+import { asyncHandler, normalizeUsername, publicUser } from '../utils.js';
 
 const router = express.Router();
 
@@ -14,7 +14,8 @@ router.post('/signup', asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Public signup is disabled. Please contact a supervisor.' });
   }
 
-  const { username, password, fullName } = req.body;
+  const { password, fullName } = req.body;
+  const username = normalizeUsername(req.body.username);
 
   if (!username || !password || !fullName) {
     return res.status(400).json({ error: 'username, password, and fullName are required' });
@@ -45,7 +46,8 @@ router.post('/signup', asyncHandler(async (req, res) => {
 // staff and auto-logs them in. Authorized by the invite token (independent of
 // the public-signup toggle).
 router.post('/accept-invite', asyncHandler(async (req, res) => {
-  const { token, username, password, fullName } = req.body;
+  const { token, password, fullName } = req.body;
+  const username = normalizeUsername(req.body.username);
 
   if (!token || !username || !password) {
     return res.status(400).json({ error: 'token, username, and password are required' });
@@ -122,8 +124,66 @@ router.post('/accept-invite', asyncHandler(async (req, res) => {
   }
 }));
 
+// Complete an admin-issued password reset. Authorized by the reset token.
+router.post('/reset-password', asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ error: 'token and password are required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+
+    const { rows } = await client.query(
+      `select * from password_resets where token = $1 for update`,
+      [token],
+    );
+    const reset = rows[0];
+    if (!reset) {
+      await client.query('rollback');
+      return res.status(404).json({ error: 'Reset link not found' });
+    }
+    if (reset.used_at) {
+      await client.query('rollback');
+      return res.status(409).json({ error: 'This reset link has already been used' });
+    }
+    if (new Date(reset.expires_at).getTime() < Date.now()) {
+      await client.query('rollback');
+      return res.status(410).json({ error: 'This reset link has expired' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await client.query(
+      `update profiles set password_hash = $1 where id = $2`,
+      [hashedPassword, reset.user_id],
+    );
+    await client.query(
+      `update password_resets set used_at = now() where id = $1`,
+      [reset.id],
+    );
+
+    await client.query('commit');
+
+    await logAudit({
+      actorId: reset.created_by,
+      action: 'password_reset_completed',
+      targetType: 'profile',
+      targetId: reset.user_id,
+    });
+
+    return res.json({ ok: true });
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
 router.post('/login', asyncHandler(async (req, res) => {
-  const { username, password } = req.body;
+  const { password } = req.body;
+  const username = normalizeUsername(req.body.username);
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
   }
@@ -131,7 +191,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `select id, username, full_name, role, consultant_id, psychologist_id, password_hash
      from profiles
-     where username = $1`,
+     where lower(username) = $1`,
     [username],
   );
 

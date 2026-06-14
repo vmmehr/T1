@@ -13,6 +13,7 @@ import DecisionOutcome from './views/DecisionOutcome';
 import Archive from './views/Archive';
 import Login from './views/Login';
 import Signup from './views/Signup';
+import ResetPassword from './views/ResetPassword';
 import Dashboard from './views/Dashboard';
 
 import DecisionTabs from './components/DecisionTabs';
@@ -97,6 +98,10 @@ const AppContent = () => {
     if (path.startsWith('/invite/')) {
       const inviteToken = decodeURIComponent(path.slice('/invite/'.length));
       return <Signup inviteToken={inviteToken} />;
+    }
+    if (path.startsWith('/reset/')) {
+      const resetToken = decodeURIComponent(path.slice('/reset/'.length));
+      return <ResetPassword token={resetToken} />;
     }
     if (path === '/signup') {
       return <Signup />;

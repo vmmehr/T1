@@ -10,6 +10,7 @@ import commentsRouter from './routes/comments.js';
 import decisionItemsRouter from './routes/decisionItems.js';
 import decisionsRouter from './routes/decisions.js';
 import invitationsRouter from './routes/invitations.js';
+import passwordResetsRouter from './routes/passwordResets.js';
 import profilesRouter from './routes/profiles.js';
 import tasksRouter from './routes/tasks.js';
 
@@ -38,6 +39,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/invitations', invitationsRouter);
+app.use('/api/password-resets', passwordResetsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/admin', adminRouter);

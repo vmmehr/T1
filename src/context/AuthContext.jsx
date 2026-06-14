@@ -100,6 +100,10 @@ export const AuthProvider = ({ children }) => {
         return api.admin.updateClientAssignments(clientId, data);
     }, []);
 
+    const createPasswordResetLink = useCallback(async (userId) => {
+        return api.passwordResets.create(userId);
+    }, []);
+
     const value = useMemo(() => ({
         currentUser,
         signup,
@@ -113,7 +117,8 @@ export const AuthProvider = ({ children }) => {
         getMyAssignments,
         createUserByAdmin,
         deleteUserByAdmin,
-        updateClientAssignmentsByAdmin
+        updateClientAssignmentsByAdmin,
+        createPasswordResetLink
     }), [
         currentUser,
         signup,
@@ -127,7 +132,8 @@ export const AuthProvider = ({ children }) => {
         getMyAssignments,
         createUserByAdmin,
         deleteUserByAdmin,
-        updateClientAssignmentsByAdmin
+        updateClientAssignmentsByAdmin,
+        createPasswordResetLink
     ]);
 
     return (

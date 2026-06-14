@@ -63,6 +63,7 @@ export const api = {
   auth: {
     signup: (data) => request('/api/auth/signup', { method: 'POST', body: data, auth: false }),
     acceptInvite: (data) => request('/api/auth/accept-invite', { method: 'POST', body: data, auth: false }),
+    resetPassword: (data) => request('/api/auth/reset-password', { method: 'POST', body: data, auth: false }),
     login: (username, password) =>
       request('/api/auth/login', { method: 'POST', body: { username, password }, auth: false }),
     me: () => request('/api/auth/me'),
@@ -111,6 +112,10 @@ export const api = {
     list: () => request('/api/invitations'),
     validate: (token) => request(`/api/invitations/${token}`, { auth: false }),
     revoke: (id) => request(`/api/invitations/${id}`, { method: 'DELETE' }),
+  },
+  passwordResets: {
+    create: (userId) => request('/api/password-resets', { method: 'POST', body: { userId } }),
+    validate: (token) => request(`/api/password-resets/${token}`, { auth: false }),
   },
   audit: {
     list: (limit) => request(`/api/audit${limit ? `?limit=${limit}` : ''}`),
