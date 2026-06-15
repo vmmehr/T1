@@ -1,4 +1,5 @@
 import React from 'react';
+import ThemeToggle from './ThemeToggle';
 import styles from './Layout.module.css';
 
 const Layout = ({ children }) => {
@@ -13,7 +14,7 @@ const Layout = ({ children }) => {
                         <h1 className={styles.title}>سامانه تصمیم‌گیری هوشمند</h1>
                     </div>
                     <nav>
-                        {/* Navigation items could go here */}
+                        <ThemeToggle />
                     </nav>
                 </div>
             </header>

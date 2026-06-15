@@ -1,27 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../apiClient';
 import styles from './Signup.module.css';
 
-const Signup = () => {
+const Signup = ({ inviteToken = null }) => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { signup } = useAuth();
+    // Invite-mode state: none | loading | valid | invalid
+    const [inviteState, setInviteState] = useState(inviteToken ? 'loading' : 'none');
+
+    const { signup, acceptInvite } = useAuth();
+
+    useEffect(() => {
+        if (!inviteToken) return undefined;
+        let active = true;
+        (async () => {
+            try {
+                const result = await api.invitations.validate(inviteToken);
+                if (!active) return;
+                if (result.valid) {
+                    setInviteState('valid');
+                    if (result.full_name) setName(result.full_name);
+                } else {
+                    setInviteState('invalid');
+                    setError(
+                        result.status === 'used'
+                            ? 'این دعوت قبلاً استفاده شده است.'
+                            : result.status === 'expired'
+                                ? 'این دعوت منقضی شده است.'
+                                : 'این لینک دعوت معتبر نیست.'
+                    );
+                }
+            } catch {
+                if (active) {
+                    setInviteState('invalid');
+                    setError('این لینک دعوت معتبر نیست.');
+                }
+            }
+        })();
+        return () => { active = false; };
+    }, [inviteToken]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            await signup({
-                fullName: name, // Changed from name to fullName to match DB schema
-                username,
-                password
-            });
-            // Redirect or show success (AuthContext auto-logins, so App will redirect)
+            if (inviteToken) {
+                await acceptInvite({ token: inviteToken, username, password, fullName: name });
+            } else {
+                await signup({ fullName: name, username, password });
+            }
+            // AuthContext auto-logs in, so App will redirect.
         } catch (err) {
             setError(err.message);
         } finally {
@@ -29,9 +63,30 @@ const Signup = () => {
         }
     };
 
+    if (inviteToken && inviteState === 'loading') {
+        return <div className={styles.container}><p>در حال بررسی دعوت...</p></div>;
+    }
+
+    if (inviteToken && inviteState === 'invalid') {
+        return (
+            <div className={styles.container}>
+                <h2 className={styles.title}>دعوت نامعتبر</h2>
+                <div className={styles.error}>{error}</div>
+                <div className={styles.link}>
+                    <a href="/login">بازگشت به ورود</a>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={styles.container}>
-            <h2 className={styles.title}>ثبت نام</h2>
+            <h2 className={styles.title}>{inviteToken ? 'تکمیل ثبت‌نام دعوت' : 'ثبت نام'}</h2>
+            {inviteToken && (
+                <p className={styles.inviteNote}>
+                    شما به‌عنوان مراجع دعوت شده‌اید. برای ساخت حساب، اطلاعات زیر را کامل کنید.
+                </p>
+            )}
             {error && <div className={styles.error}>{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className={styles.formField}>
@@ -71,9 +126,11 @@ const Signup = () => {
                     {loading ? 'در حال ثبت نام...' : 'ثبت نام'}
                 </button>
             </form>
-            <div className={styles.link}>
-                <a href="/login">قبلاً ثبت نام کرده‌اید؟</a>
-            </div>
+            {!inviteToken && (
+                <div className={styles.link}>
+                    <a href="/login">قبلاً ثبت نام کرده‌اید؟</a>
+                </div>
+            )}
         </div>
     );
 };

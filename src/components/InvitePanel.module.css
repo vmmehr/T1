@@ -1,0 +1,96 @@
+.wrapper {
+  margin-top: var(--spacing-lg);
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.form :global(.input-field) {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.error {
+  color: #b42318;
+  font-size: 0.85rem;
+}
+
+.empty,
+.hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.itemMain {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.itemName {
+  font-weight: 600;
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.itemActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pending {
+  background: #fff4e5;
+  color: #b25e09;
+}
+
+.used {
+  background: #e7f6ec;
+  color: #1a7f37;
+}
+
+.expired {
+  background: #f1f1f1;
+  color: #6b6b6b;
+}
+
+.revoke {
+  color: #b42318;
+}
